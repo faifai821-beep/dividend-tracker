@@ -3,564 +3,421 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>股息／固定收益投資組合追蹤</title>
+  <title>股息／月供投資組合</title>
   <style>
     :root {
-      --bg: #0f1419;
-      --card: #1a2332;
-      --border: #2d3a4f;
-      --text: #e7ecf3;
-      --muted: #8b9bb4;
-      --accent: #3b82f6;
-      --accent-hover: #2563eb;
-      --green: #22c55e;
-      --red: #ef4444;
-      --yellow: #eab308;
-      --input-bg: #0d1117;
+      --bg:#0f1419; --card:#1a2332; --border:#2d3a4f; --text:#e7ecf3; --muted:#8b9bb4;
+      --accent:#3b82f6; --green:#22c55e; --red:#ef4444; --yellow:#eab308; --input:#0d1117;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      line-height: 1.5;
-    }
-    .container { max-width: 1450px; margin: 0 auto; padding: 24px 16px; }
-    header {
-      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-      gap: 16px; margin-bottom: 20px;
-    }
-    h1 { font-size: 1.45rem; font-weight: 700; }
-    h1 span { color: var(--accent); }
-    .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    button {
-      background: var(--accent); color: #fff; border: none; border-radius: 8px;
-      padding: 9px 14px; font-size: 0.88rem; font-weight: 600; cursor: pointer;
-    }
-    button:hover { background: var(--accent-hover); }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
-    button.secondary:hover { background: var(--border); }
-    button.danger { background: #b91c1c; }
-    button.manual-btn { background: #6d28d9; }
-    button.manual-btn:hover { background: #5b21b6; }
-
-    .fx-bar {
-      display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
-      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
-      padding: 10px 16px; margin-bottom: 16px; font-size: 0.9rem;
-    }
-    .fx-bar label { color: var(--muted); }
-    .fx-bar input {
-      background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px;
-      color: var(--text); padding: 5px 8px; width: 80px; text-align: center; font-weight: 600;
-    }
-    .fx-bar .note { color: var(--muted); font-size: 0.82rem; }
-
-    .summary {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
-      gap: 10px; margin-bottom: 20px;
-    }
-    .card {
-      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-      padding: 12px 14px;
-    }
-    .card .label { font-size: 0.75rem; color: var(--muted); margin-bottom: 3px; }
-    .card .value { font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-    .card .value.green { color: var(--green); }
-    .card .value.red { color: var(--red); }
-    .card .value.blue { color: #60a5fa; }
-    .card .unit { font-size: 0.72rem; color: var(--muted); font-weight: 500; }
-
-    .table-wrap {
-      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-      overflow-x: auto; margin-bottom: 18px;
-    }
-    table { width: 100%; border-collapse: collapse; min-width: 1280px; }
-    th, td {
-      padding: 8px 9px; text-align: center; border-bottom: 1px solid var(--border);
-      font-size: 0.85rem; white-space: nowrap;
-    }
-    th {
-      background: #15202b; color: var(--muted); font-weight: 600; font-size: 0.72rem;
-      text-transform: uppercase; letter-spacing: 0.02em; position: sticky; top: 0;
-    }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(59, 130, 246, 0.06); }
-    tr.manual-row td { background: rgba(167, 139, 250, 0.06); }
-    tr.manual-row:hover td { background: rgba(167, 139, 250, 0.12); }
-
-    input[type="text"], input[type="number"], select {
-      background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px;
-      color: var(--text); padding: 4px 6px; width: 100%; max-width: 100px;
-      font-size: 0.85rem; text-align: center;
-    }
-    input:focus, select:focus { outline: none; border-color: var(--accent); }
-    input.ticker { max-width: 95px; font-weight: 600; color: #93c5fd; }
-    input.name-input { max-width: 120px; text-align: left; }
-    select.cur-sel { max-width: 72px; font-weight: 600; }
-    .muted { color: var(--muted); font-size: 0.8rem; }
-    .badge {
-      display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;
-    }
-    .badge-stock { background: #1e3a5f; color: #93c5fd; }
-    .badge-manual { background: #4c1d95; color: #c4b5fd; }
-    .badge-hk { background: #78350f; color: #fcd34d; }
-    tr.hk-row td { background: rgba(245, 158, 11, 0.06); }
-    tr.hk-row:hover td { background: rgba(245, 158, 11, 0.12); }
-
-    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
-    .status { font-size: 0.84rem; color: var(--muted); margin-left: auto; }
-    .status.loading { color: var(--yellow); }
-    .status.ok { color: var(--green); }
-    .status.err { color: var(--red); }
-
-    footer {
-      margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--border);
-      font-size: 0.78rem; color: var(--muted); text-align: center;
-    }
-    .hint {
-      background: #1e293b; border-left: 3px solid var(--accent); padding: 11px 14px;
-      border-radius: 0 8px 8px 0; margin-bottom: 16px; font-size: 0.84rem; color: var(--muted);
-    }
-    .hint strong { color: var(--text); }
-    .empty-row td { color: var(--muted); font-style: italic; padding: 22px; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
+    .container{max-width:1400px;margin:0 auto;padding:20px 14px}
+    header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+    h1{font-size:1.35rem;font-weight:700} h1 span{color:var(--accent)}
+    h2{font-size:1.05rem;margin:20px 0 10px;color:#93c5fd}
+    .header-actions{display:flex;gap:8px;flex-wrap:wrap}
+    button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:.86rem;font-weight:600;cursor:pointer}
+    button:hover{filter:brightness(1.1)} button:disabled{opacity:.5}
+    button.secondary{background:transparent;border:1px solid var(--border);color:var(--text)}
+    button.danger{background:#b91c1c} button.manual-btn{background:#6d28d9}
+    .hint{background:#1e293b;border-left:3px solid var(--accent);padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:14px;font-size:.84rem;color:var(--muted)}
+    .hint strong{color:var(--text)}
+    .fx-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.9rem}
+    .fx-bar input{background:var(--input);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;width:72px;text-align:center;font-weight:600}
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+    .card .label{font-size:.75rem;color:var(--muted)} .card .value{font-size:1.15rem;font-weight:700}
+    .card .unit{font-size:.7rem;color:var(--muted)} .value.green{color:var(--green)} .value.red{color:var(--red)} .value.blue{color:#60a5fa}
+    .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+    .tabs button{background:#15202b;border:1px solid var(--border)}
+    .tabs button.active{background:var(--accent);border-color:var(--accent)}
+    .panel{display:none} .panel.active{display:block}
+    .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow-x:auto;margin-bottom:14px}
+    table{width:100%;border-collapse:collapse;min-width:900px}
+    th,td{padding:7px 8px;text-align:center;border-bottom:1px solid var(--border);font-size:.84rem;white-space:nowrap}
+    th{background:#15202b;color:var(--muted);font-size:.72rem;text-transform:uppercase}
+    tr:hover td{background:rgba(59,130,246,.06)}
+    tr.manual-row td{background:rgba(167,139,250,.06)} tr.hk-row td{background:rgba(245,158,11,.06)}
+    input,select{background:var(--input);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 6px;max-width:100px;font-size:.84rem;text-align:center}
+    input.name-input{max-width:120px;text-align:left} input.ticker{max-width:90px;font-weight:600;color:#93c5fd}
+    .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:.7rem;font-weight:600}
+    .badge-stock{background:#1e3a5f;color:#93c5fd} .badge-manual{background:#4c1d95;color:#c4b5fd} .badge-hk{background:#78350f;color:#fcd34d}
+    .status{font-size:.84rem;color:var(--muted);margin:8px 0} .status.ok{color:var(--green)} .status.err{color:var(--red)} .status.loading{color:var(--yellow)}
+    .month-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:16px}
+    .month-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-height:90px}
+    .month-card h3{font-size:.85rem;color:#93c5fd;margin-bottom:6px}
+    .month-card .amt{font-weight:700;color:var(--green);font-size:1rem}
+    .month-card ul{list-style:none;font-size:.78rem;color:var(--muted);margin-top:4px}
+    .month-card ul li{margin:2px 0}
+    footer{margin-top:20px;padding-top:12px;border-top:1px solid var(--border);font-size:.78rem;color:var(--muted);text-align:center}
+    .muted{color:var(--muted);font-size:.8rem}
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>📈 股息／固定收益<span>投資組合</span></h1>
-      <div class="header-actions">
-        <button type="button" id="btn-update">🔄 更新股價與派息</button>
-        <button type="button" class="secondary" id="btn-add">＋ 股票／ETF</button>
-        <button type="button" class="manual-btn" id="btn-add-manual">＋ 固定收益／債券</button>
-        <button type="button" class="secondary" id="btn-add-hk" style="border-color:#f59e0b;color:#fbbf24;">＋ 港股手動</button>
-        <button type="button" class="secondary" id="btn-save">💾 儲存</button>
-        <button type="button" class="danger" id="btn-clear">清除全部</button>
-      </div>
-    </header>
-
-    <div class="hint">
-      <strong>幣別與換算：</strong>每列可選 <strong>HKD</strong> 或 <strong>USD</strong>。上方摘要一律以 <strong>港元 (HKD)</strong> 顯示，美元按匯率換算。<br>
-      • <span class="badge badge-stock">股票/ETF</span> 輸入 Ticker，點「更新」自動抓價。<br>
-      • <span class="badge badge-manual">固定收益</span> 手動填名稱、本金、現值、年利息（債券／定存）。
-      • <span class="badge" style="background:#78350f;color:#fcd34d;">港股手動</span> 用股數、每股成本、現價、每股年息輸入（不經 API）。
+<div class="container">
+  <header>
+    <h1>📈 股息／月供<span>投資組合</span></h1>
+    <div class="header-actions">
+      <button type="button" id="btn-update">🔄 更新股價與派息</button>
+      <button type="button" class="secondary" id="btn-add">＋ 股票/ETF</button>
+      <button type="button" class="manual-btn" id="btn-add-manual">＋ 固定收益</button>
+      <button type="button" class="secondary" id="btn-add-hk" style="border-color:#f59e0b;color:#fbbf24">＋ 港股手動</button>
+      <button type="button" class="secondary" id="btn-save">💾 儲存</button>
+      <button type="button" class="danger" id="btn-clear">清除全部</button>
     </div>
+  </header>
 
-    <div class="fx-bar">
-      <label>匯率設定：</label>
-      <span>1 USD =</span>
-      <input type="number" id="fx-rate" value="7.8" min="0.01" step="0.01" title="美元兌港元" />
-      <span>HKD</span>
-      <span class="note">（可自行修改，總計會即時重算）</span>
-    </div>
+  <div class="hint">
+    <strong>功能：</strong>① 持股與全年收息／總息率　② 每月派息預估（依派息頻率）　③ 月供記錄與加總<br>
+    美股可自動更新；港股請用「港股手動」。摘要一律換算 <strong>HKD</strong>。
+  </div>
 
-    <div class="summary">
-      <div class="card"><div class="label">總投資成本</div><div class="value" id="s-cost">—</div><div class="unit">HKD</div></div>
-      <div class="card"><div class="label">總市值</div><div class="value blue" id="s-mv">—</div><div class="unit">HKD</div></div>
-      <div class="card"><div class="label">總預估年息</div><div class="value green" id="s-div">—</div><div class="unit">HKD</div></div>
-      <div class="card"><div class="label">組合成本息率</div><div class="value" id="s-yc">—</div></div>
-      <div class="card"><div class="label">組合市值息率</div><div class="value" id="s-ym">—</div></div>
-      <div class="card"><div class="label">未實現損益</div><div class="value" id="s-pnl">—</div><div class="unit">HKD</div></div>
-      <div class="card"><div class="label">未實現報酬率</div><div class="value" id="s-ret">—</div></div>
-    </div>
+  <div class="fx-bar">
+    <label>匯率：1 USD =</label>
+    <input type="number" id="fx-rate" value="7.8" min="0.01" step="0.01" />
+    <span>HKD</span>
+    <span class="muted">（修改後總計即時重算）</span>
+  </div>
 
-    <div class="toolbar">
-      <span class="status" id="status">就緒</span>
-    </div>
+  <!-- 核心摘要：全年收息 + 總息率 -->
+  <div class="summary">
+    <div class="card"><div class="label">總投資成本</div><div class="value" id="s-cost">—</div><div class="unit">HKD</div></div>
+    <div class="card"><div class="label">總市值</div><div class="value blue" id="s-mv">—</div><div class="unit">HKD</div></div>
+    <div class="card"><div class="label">全年預估收息</div><div class="value green" id="s-div">—</div><div class="unit">HKD／年</div></div>
+    <div class="card"><div class="label">組合成本息率</div><div class="value" id="s-yc">—</div></div>
+    <div class="card"><div class="label">組合市值息率</div><div class="value" id="s-ym">—</div></div>
+    <div class="card"><div class="label">未實現損益</div><div class="value" id="s-pnl">—</div><div class="unit">HKD</div></div>
+    <div class="card"><div class="label">本年累計月供</div><div class="value blue" id="s-dca">—</div><div class="unit">HKD</div></div>
+  </div>
 
+  <div class="tabs">
+    <button type="button" class="active" data-tab="holdings">持股明細</button>
+    <button type="button" data-tab="calendar">每月派息預估</button>
+    <button type="button" data-tab="dca">月供記錄</button>
+  </div>
+  <div class="status" id="status">就緒</div>
+
+  <!-- 持股 -->
+  <div class="panel active" id="panel-holdings">
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>類型</th>
-            <th>Ticker／名稱</th>
-            <th>名稱</th>
-            <th>幣別</th>
-            <th>數量</th>
-            <th>成本/本金</th>
-            <th>投資成本</th>
-            <th>現價/現值</th>
-            <th>市值</th>
-            <th>成本(HKD)</th>
-            <th>市值(HKD)</th>
-            <th>權重</th>
-            <th>每股年息<br>或年利息</th>
-            <th>預估年息</th>
-            <th>年息(HKD)</th>
-            <th>成本息率</th>
-            <th>市值息率</th>
-            <th></th>
+            <th>類型</th><th>名稱／Ticker</th><th>幣別</th><th>股數</th><th>成本</th><th>現價</th>
+            <th>市值(HKD)</th><th>每股年息<br>或年息</th><th>全年收息(HKD)</th>
+            <th>派息頻率</th><th>成本息率</th><th>市值息率</th><th></th>
           </tr>
         </thead>
-        <tbody id="tbody"></tbody>
+        <tbody id="tbody-holdings"></tbody>
       </table>
     </div>
-
-    <footer>
-      摘要一律換算為 HKD（可調匯率）｜股票資料：Finnhub｜固定收益為手動輸入｜僅供參考
-    </footer>
+    <p class="muted">派息頻率用於「每月派息預估」：每月／每季／每半年／每年。港股與手動請自行設定。</p>
   </div>
 
-  <script>
-    const STORAGE_KEY = "dividend_portfolio_v3";
-    const FX_KEY = "dividend_fx_rate";
+  <!-- 每月派息 -->
+  <div class="panel" id="panel-calendar">
+    <h2>📅 每月預估派息（依頻率平均分攤全年收息）</h2>
+    <p class="muted" style="margin-bottom:10px">每季假設約在 3／6／9／12 月；每半年 6／12 月；每年 12 月。實際以公司公告為準。</p>
+    <div class="month-grid" id="month-grid"></div>
+    <div class="card" style="max-width:280px">
+      <div class="label">十二個月合計（應約等於全年收息）</div>
+      <div class="value green" id="s-month-total">—</div>
+      <div class="unit">HKD</div>
+    </div>
+  </div>
 
-    const DEFAULT_ROWS = [
-      { type: "stock", ticker: "AAPL", shares: 50, cost: 180, currency: "USD" },
-      { type: "stock", ticker: "MSFT", shares: 30, cost: 350, currency: "USD" },
-      { type: "stock", ticker: "JNJ", shares: 40, cost: 155, currency: "USD" },
-      { type: "stock", ticker: "KO", shares: 100, cost: 58, currency: "USD" },
-      { type: "stock", ticker: "TLT", shares: 20, cost: 95, currency: "USD" },
-      { type: "manual", name: "示例：港元定存／債券", shares: 1, cost: 100000, price: 100000, annual_div: 4000, currency: "HKD" },
-      { type: "manual", name: "示例：美元債券", shares: 1, cost: 10000, price: 9800, annual_div: 450, currency: "USD" },
-    ];
+  <!-- 月供 -->
+  <div class="panel" id="panel-dca">
+    <h2>💵 月供股票記錄</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
+      <input type="month" id="dca-month" style="max-width:140px" />
+      <input type="text" id="dca-name" placeholder="名稱／Ticker" style="max-width:120px;text-align:left" />
+      <select id="dca-cur" style="max-width:70px"><option value="HKD">HKD</option><option value="USD">USD</option></select>
+      <input type="number" id="dca-amount" placeholder="金額" min="0" step="1" style="max-width:100px" />
+      <input type="number" id="dca-shares" placeholder="股數(可空)" min="0" step="1" style="max-width:100px" />
+      <button type="button" id="btn-dca-add">＋ 加入月供</button>
+    </div>
+    <div class="summary" style="margin-bottom:12px">
+      <div class="card"><div class="label">全部月供合計</div><div class="value blue" id="dca-sum-all">—</div><div class="unit">HKD</div></div>
+      <div class="card"><div class="label">本月月供</div><div class="value" id="dca-sum-month">—</div><div class="unit">HKD</div></div>
+      <div class="card"><div class="label">本年月供</div><div class="value" id="dca-sum-year">—</div><div class="unit">HKD</div></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>年月</th><th>名稱</th><th>幣別</th><th>金額</th><th>金額(HKD)</th><th>股數</th><th></th></tr></thead>
+        <tbody id="tbody-dca"></tbody>
+      </table>
+    </div>
+  </div>
 
-    let rows = [];
-    let fxRate = 7.8;
+  <footer>全年收息與每月預估僅供參考｜實際派息以公司公告為準｜資料可存於瀏覽器本機</footer>
+</div>
 
-    function load() {
-      try {
-        const fr = localStorage.getItem(FX_KEY);
-        if (fr) fxRate = parseFloat(fr) || 7.8;
-        document.getElementById("fx-rate").value = fxRate;
+<script>
+const HOLD_KEY = "div_hold_v4";
+const DCA_KEY = "div_dca_v4";
+const FX_KEY = "div_fx_v4";
 
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          rows = JSON.parse(raw);
-          if (!Array.isArray(rows) || rows.length === 0) rows = DEFAULT_ROWS.map(r => ({ ...r }));
-          rows.forEach(r => {
-            if (!r.type) r.type = "stock";
-            if (!r.currency) r.currency = r.type === "hk" || r.type === "manual" ? "HKD" : "USD";
-          });
-        } else {
-          rows = DEFAULT_ROWS.map(r => ({ ...r }));
-        }
-      } catch {
-        rows = DEFAULT_ROWS.map(r => ({ ...r }));
-      }
-    }
+const DEFAULT_HOLD = [
+  { type:"stock", ticker:"AAPL", shares:50, cost:180, currency:"USD", freq:"quarterly" },
+  { type:"stock", ticker:"JNJ", shares:40, cost:155, currency:"USD", freq:"quarterly" },
+  { type:"hk", name:"示例 匯豐 0005", shares:2000, cost:55, price:162, annual_div:5.87, currency:"HKD", freq:"quarterly" },
+  { type:"manual", name:"示例定存", shares:1, cost:100000, price:100000, annual_div:3500, currency:"HKD", freq:"annual" },
+];
 
-    function save() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
-      localStorage.setItem(FX_KEY, String(fxRate));
-      setStatus("已儲存至本機", "ok");
-    }
+let rows = [], dcaList = [], fxRate = 7.8;
 
-    function toHKD(amount, currency) {
-      if (amount == null || isNaN(amount)) return 0;
-      if ((currency || "HKD").toUpperCase() === "USD") return amount * fxRate;
-      return amount;
-    }
+function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
+function fmt(n,d=2){ if(n==null||n===""||isNaN(n))return "—"; return Number(n).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function fmtPct(n){ if(n==null||isNaN(n))return "—"; return (n*100).toFixed(2)+"%"; }
+function esc(s){ const d=document.createElement("div"); d.textContent=s==null?"":String(s); return d.innerHTML; }
+function toHKD(a,c){ if(a==null||isNaN(a))return 0; return (c||"HKD").toUpperCase()==="USD" ? a*fxRate : a; }
 
-    function fmt(n, d = 2) {
-      if (n == null || n === "" || isNaN(n)) return "—";
-      return Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
-    }
-    function fmtPct(n) {
-      if (n == null || isNaN(n)) return "—";
-      return (n * 100).toFixed(2) + "%";
-    }
-    function num(v) {
-      const n = parseFloat(v);
-      return isNaN(n) ? 0 : n;
-    }
+function load(){
+  try{
+    const fr=localStorage.getItem(FX_KEY); if(fr) fxRate=parseFloat(fr)||7.8;
+    document.getElementById("fx-rate").value=fxRate;
+    const h=localStorage.getItem(HOLD_KEY);
+    if(h){ rows=JSON.parse(h); rows.forEach(r=>{ if(!r.type)r.type="stock"; if(!r.currency)r.currency="USD"; if(!r.freq)r.freq="quarterly"; }); }
+    else rows=DEFAULT_HOLD.map(r=>({...r}));
+    const d=localStorage.getItem(DCA_KEY);
+    if(d) dcaList=JSON.parse(d); else dcaList=[];
+  }catch(e){ rows=DEFAULT_HOLD.map(r=>({...r})); dcaList=[]; }
+  const now=new Date();
+  document.getElementById("dca-month").value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+}
 
-    function calcRow(r) {
-      const isManual = r.type === "manual";
-      const isHk = r.type === "hk";
-      const shares = num(r.shares) || (isManual ? 1 : 0);
-      const cost = num(r.cost);
-      const price = isManual
-        ? (r.price != null && r.price !== "" ? num(r.price) : cost)
-        : num(r.price);
-      const annual = num(r.annual_div);
-      // manual=總額；stock/hk=每股×數量
-      const costBasis = isManual ? cost : shares * cost;
-      const mv = isManual ? price : shares * price;
-      const estDiv = isManual ? annual : shares * annual;
-      const cur = (r.currency || "HKD").toUpperCase();
-      const costHkd = toHKD(costBasis, cur);
-      const mvHkd = toHKD(mv, cur);
-      const divHkd = toHKD(estDiv, cur);
-      const yoc = costBasis > 0 ? estDiv / costBasis : null;
-      const yom = mv > 0 ? estDiv / mv : null;
-      return { costBasis, mv, estDiv, yoc, yom, costHkd, mvHkd, divHkd, shares, price };
-    }
+function save(){
+  localStorage.setItem(HOLD_KEY, JSON.stringify(rows));
+  localStorage.setItem(DCA_KEY, JSON.stringify(dcaList));
+  localStorage.setItem(FX_KEY, String(fxRate));
+  setStatus("已儲存","ok");
+}
 
-    function esc(s) {
-      const d = document.createElement("div");
-      d.textContent = s == null ? "" : String(s);
-      return d.innerHTML;
-    }
+function calcRow(r){
+  const isManual=r.type==="manual";
+  const shares=num(r.shares)||(isManual?1:0);
+  const cost=num(r.cost);
+  const price=isManual?(r.price!=null&&r.price!==""?num(r.price):cost):num(r.price);
+  const annual=num(r.annual_div);
+  const costBasis=isManual?cost:shares*cost;
+  const mv=isManual?price:shares*price;
+  const estDiv=isManual?annual:shares*annual;
+  const cur=(r.currency||"HKD").toUpperCase();
+  return {
+    costBasis, mv, estDiv,
+    costHkd:toHKD(costBasis,cur), mvHkd:toHKD(mv,cur), divHkd:toHKD(estDiv,cur),
+    yoc:costBasis>0?estDiv/costBasis:null, yom:mv>0?estDiv/mv:null
+  };
+}
 
-    function render() {
-      const tbody = document.getElementById("tbody");
-      tbody.innerHTML = "";
+function setStatus(msg,type=""){ const el=document.getElementById("status"); el.textContent=msg; el.className="status "+type; }
 
-      if (rows.length === 0) {
-        tbody.innerHTML = `<tr class="empty-row"><td colspan="18">尚無資料，請新增股票／ETF 或固定收益</td></tr>`;
-        updateSummary();
-        return;
-      }
+/* ---- 每月派息：依頻率分攤 ---- */
+const FREQ_MONTHS = {
+  monthly:   [1,2,3,4,5,6,7,8,9,10,11,12],
+  quarterly: [3,6,9,12],
+  semiannual:[6,12],
+  annual:    [12],
+};
+function monthIncomeMap(){
+  const map={}; for(let m=1;m<=12;m++) map[m]=[];
+  rows.forEach(r=>{
+    const c=calcRow(r);
+    if(!c.divHkd) return;
+    const freq=r.freq||"quarterly";
+    const months=FREQ_MONTHS[freq]||FREQ_MONTHS.quarterly;
+    const per=c.divHkd/months.length;
+    const label=r.name||r.ticker||"未命名";
+    months.forEach(m=> map[m].push({ name:label, amount:per }));
+  });
+  return map;
+}
 
-      let totalCostH = 0, totalMvH = 0, totalDivH = 0;
-      rows.forEach(r => {
-        const c = calcRow(r);
-        totalCostH += c.costHkd;
-        totalMvH += c.mvHkd;
-        totalDivH += c.divHkd;
-      });
+function renderCalendar(){
+  const map=monthIncomeMap();
+  const names=["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+  const grid=document.getElementById("month-grid");
+  grid.innerHTML="";
+  let total=0;
+  for(let m=1;m<=12;m++){
+    const items=map[m];
+    const sum=items.reduce((s,x)=>s+x.amount,0);
+    total+=sum;
+    const ul=items.slice(0,6).map(x=>`<li>${esc(x.name)}：${fmt(x.amount)}</li>`).join("")
+      +(items.length>6?`<li>…共 ${items.length} 筆</li>`:"");
+    grid.innerHTML+=`<div class="month-card"><h3>${names[m]}</h3><div class="amt">${sum?fmt(sum):"—"}</div><ul>${ul||"<li class='muted'>無預估派息</li>"}</ul></div>`;
+  }
+  document.getElementById("s-month-total").textContent=total?fmt(total):"—";
+}
 
-      rows.forEach((r, i) => {
-        const isManual = r.type === "manual";
-        const isHk = r.type === "hk";
-        const isAuto = r.type === "stock" || !r.type;
-        const c = calcRow(r);
-        const weight = totalMvH > 0 ? c.mvHkd / totalMvH : 0;
-        const tr = document.createElement("tr");
-        if (isManual) tr.classList.add("manual-row");
-        if (isHk) tr.classList.add("hk-row");
+/* ---- 持股表 ---- */
+function renderHoldings(){
+  const tbody=document.getElementById("tbody-holdings");
+  tbody.innerHTML="";
+  let tc=0,tm=0,td=0;
+  rows.forEach(r=>{ const c=calcRow(r); tc+=c.costHkd; tm+=c.mvHkd; td+=c.divHkd; });
 
-        const typeBadge = isManual
-          ? `<span class="badge badge-manual">固定收益</span>`
-          : isHk
-            ? `<span class="badge badge-hk">港股手動</span>`
-            : `<span class="badge badge-stock">股票/ETF</span>`;
+  rows.forEach((r,i)=>{
+    const isManual=r.type==="manual", isHk=r.type==="hk";
+    const c=calcRow(r);
+    const tr=document.createElement("tr");
+    if(isManual) tr.classList.add("manual-row");
+    if(isHk) tr.classList.add("hk-row");
+    const badge=isManual?`<span class="badge badge-manual">固定收益</span>`:isHk?`<span class="badge badge-hk">港股手動</span>`:`<span class="badge badge-stock">股票/ETF</span>`;
+    const nameCell=isManual||isHk
+      ?`<input class="name-input" type="text" value="${esc(r.name||"")}" data-i="${i}" data-f="name" placeholder="${isHk?"匯豐 0005":"名稱"}" />`
+      :`<input class="ticker" type="text" value="${esc(r.ticker||"")}" data-i="${i}" data-f="ticker" placeholder="AAPL" />`;
+    const priceCell=(isManual||isHk)
+      ?`<input type="number" value="${r.price??""}" data-i="${i}" data-f="price" min="0" step="0.01" />`
+      :(r.price!=null?fmt(r.price,2):"—");
+    const annualCell=(isManual||isHk)
+      ?`<input type="number" value="${r.annual_div??""}" data-i="${i}" data-f="annual_div" min="0" step="0.01" />`
+      :(r.annual_div!=null?fmt(r.annual_div,4):"—");
+    const freq=r.freq||"quarterly";
+    tr.innerHTML=`
+      <td>${badge}</td>
+      <td>${nameCell}</td>
+      <td><select data-i="${i}" data-f="currency"><option value="HKD" ${r.currency==="HKD"?"selected":""}>HKD</option><option value="USD" ${r.currency==="USD"?"selected":""}>USD</option></select></td>
+      <td><input type="number" value="${r.shares??""}" data-i="${i}" data-f="shares" min="0" step="1" style="max-width:80px" /></td>
+      <td><input type="number" value="${r.cost??""}" data-i="${i}" data-f="cost" min="0" step="0.01" /></td>
+      <td>${priceCell}</td>
+      <td>${c.mvHkd?fmt(c.mvHkd):"—"}</td>
+      <td>${annualCell}</td>
+      <td>${c.divHkd?fmt(c.divHkd):"—"}</td>
+      <td><select data-i="${i}" data-f="freq">
+        <option value="monthly" ${freq==="monthly"?"selected":""}>每月</option>
+        <option value="quarterly" ${freq==="quarterly"?"selected":""}>每季</option>
+        <option value="semiannual" ${freq==="semiannual"?"selected":""}>每半年</option>
+        <option value="annual" ${freq==="annual"?"selected":""}>每年</option>
+      </select></td>
+      <td>${c.yoc!=null?fmtPct(c.yoc):"—"}</td>
+      <td>${c.yom!=null?fmtPct(c.yom):"—"}</td>
+      <td><button type="button" class="secondary" style="padding:3px 7px;font-size:.75rem" data-del="${i}">刪</button></td>`;
+    tbody.appendChild(tr);
+  });
 
-        const tickerOrName = isManual
-          ? `<input class="name-input" type="text" value="${esc(r.name || "")}" data-i="${i}" data-f="name" placeholder="債券／定存名稱" />`
-          : isHk
-            ? `<input class="name-input" type="text" value="${esc(r.name || r.ticker || "")}" data-i="${i}" data-f="name" placeholder="如 匯豐 0005" />`
-            : `<input class="ticker" type="text" value="${esc(r.ticker || "")}" data-i="${i}" data-f="ticker" placeholder="AAPL" />`;
+  tbody.querySelectorAll("input,select").forEach(el=>{
+    el.addEventListener("change", onHoldChange);
+    if(el.tagName==="INPUT") el.addEventListener("blur", onHoldChange);
+  });
+  tbody.querySelectorAll("[data-del]").forEach(btn=>{
+    btn.onclick=()=>{ rows.splice(+btn.dataset.del,1); renderAll(); save(); };
+  });
 
-        const nameDisplay = isManual
-          ? `<span class="muted">手動</span>`
-          : isHk
-            ? `<span class="muted">HKD 港股</span>`
-            : `<span title="${esc(r.name || "")}">${esc(r.name || "—")}</span>`;
+  const yoc=tc>0?td/tc:null, yom=tm>0?td/tm:null, pnl=tm-tc;
+  document.getElementById("s-cost").textContent=tc?fmt(tc):"—";
+  document.getElementById("s-mv").textContent=tm?fmt(tm):"—";
+  document.getElementById("s-div").textContent=td?fmt(td):"—";
+  document.getElementById("s-yc").textContent=yoc!=null?fmtPct(yoc):"—";
+  document.getElementById("s-ym").textContent=yom!=null?fmtPct(yom):"—";
+  const pnlEl=document.getElementById("s-pnl");
+  pnlEl.textContent=tc?fmt(pnl):"—"; pnlEl.className="value "+(pnl>=0?"green":"red");
+}
 
-        const cur = (r.currency || "HKD").toUpperCase();
-        const curSel = `
-          <select class="cur-sel" data-i="${i}" data-f="currency">
-            <option value="HKD" ${cur === "HKD" ? "selected" : ""}>HKD</option>
-            <option value="USD" ${cur === "USD" ? "selected" : ""}>USD</option>
-          </select>`;
+function onHoldChange(e){
+  const i=+e.target.dataset.i, f=e.target.dataset.f;
+  let v=e.target.value;
+  if(f==="ticker"){ v=v.trim().toUpperCase(); rows[i].ticker=v; rows[i].name=""; rows[i].price=null; rows[i].annual_div=null; }
+  else if(f==="name") rows[i].name=v.trim();
+  else if(f==="currency"||f==="freq") rows[i][f]=v;
+  else if(["shares","cost","price","annual_div"].includes(f)) rows[i][f]=v===""?null:num(v);
+  renderAll(); save();
+}
 
-        const priceCell = (isManual || isHk)
-          ? `<input type="number" value="${r.price ?? ""}" data-i="${i}" data-f="price" min="0" step="0.01" placeholder="${isHk ? "每股現價" : "現值"}" />`
-          : (r.price != null ? fmt(r.price, 2) : "—");
+/* ---- 月供 ---- */
+function renderDca(){
+  const tbody=document.getElementById("tbody-dca");
+  tbody.innerHTML="";
+  const now=new Date();
+  const thisMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  const thisYear=String(now.getFullYear());
+  let sumAll=0, sumM=0, sumY=0;
 
-        const annualCell = (isManual || isHk)
-          ? `<input type="number" value="${r.annual_div ?? ""}" data-i="${i}" data-f="annual_div" min="0" step="0.01" placeholder="${isHk ? "每股年息" : "年利息"}" />`
-          : (r.annual_div != null ? fmt(r.annual_div, 4) : "—");
+  const sorted=[...dcaList].sort((a,b)=>(b.month||"").localeCompare(a.month||""));
+  sorted.forEach((item,idx)=>{
+    const hkd=toHKD(num(item.amount), item.currency||"HKD");
+    sumAll+=hkd;
+    if(item.month===thisMonth) sumM+=hkd;
+    if((item.month||"").startsWith(thisYear)) sumY+=hkd;
+    const realIdx=dcaList.indexOf(item);
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${esc(item.month)}</td><td>${esc(item.name)}</td><td>${esc(item.currency||"HKD")}</td>
+      <td>${fmt(item.amount)}</td><td>${fmt(hkd)}</td><td>${item.shares!=null?fmt(item.shares,0):"—"}</td>
+      <td><button type="button" class="secondary" style="padding:3px 7px;font-size:.75rem" data-dca-del="${realIdx}">刪</button></td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll("[data-dca-del]").forEach(btn=>{
+    btn.onclick=()=>{ dcaList.splice(+btn.dataset.dcaDel,1); renderAll(); save(); };
+  });
+  document.getElementById("dca-sum-all").textContent=sumAll?fmt(sumAll):"—";
+  document.getElementById("dca-sum-month").textContent=sumM?fmt(sumM):"—";
+  document.getElementById("dca-sum-year").textContent=sumY?fmt(sumY):"—";
+  document.getElementById("s-dca").textContent=sumY?fmt(sumY):"—";
+}
 
-        const sharesCell = isManual
-          ? `<input type="number" value="${r.shares ?? 1}" data-i="${i}" data-f="shares" min="0" step="1" />`
-          : `<input type="number" value="${r.shares ?? ""}" data-i="${i}" data-f="shares" min="0" step="1" />`;
+function renderAll(){ renderHoldings(); renderCalendar(); renderDca(); }
 
-        const costCell = `<input type="number" value="${r.cost ?? ""}" data-i="${i}" data-f="cost" min="0" step="0.01" placeholder="${isManual ? "本金" : "每股成本"}" />`;
-
-        tr.innerHTML = `
-          <td>${typeBadge}</td>
-          <td>${tickerOrName}</td>
-          <td>${nameDisplay}</td>
-          <td>${curSel}</td>
-          <td>${sharesCell}</td>
-          <td>${costCell}</td>
-          <td>${fmt(c.costBasis)}</td>
-          <td>${priceCell}</td>
-          <td>${c.mv ? fmt(c.mv) : "—"}</td>
-          <td>${c.costHkd ? fmt(c.costHkd) : "—"}</td>
-          <td>${c.mvHkd ? fmt(c.mvHkd) : "—"}</td>
-          <td>${c.mvHkd ? fmtPct(weight) : "—"}</td>
-          <td>${annualCell}</td>
-          <td>${c.estDiv ? fmt(c.estDiv) : "—"}</td>
-          <td>${c.divHkd ? fmt(c.divHkd) : "—"}</td>
-          <td>${c.yoc != null ? fmtPct(c.yoc) : "—"}</td>
-          <td>${c.yom != null ? fmtPct(c.yom) : "—"}</td>
-          <td><button type="button" class="secondary" style="padding:3px 7px;font-size:0.75rem" data-del="${i}">刪</button></td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      tbody.querySelectorAll("input, select").forEach(el => {
-        el.addEventListener("change", onInputChange);
-        if (el.tagName === "INPUT") el.addEventListener("blur", onInputChange);
-      });
-      tbody.querySelectorAll("[data-del]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          rows.splice(parseInt(btn.dataset.del, 10), 1);
-          render();
-          save();
-        });
-      });
-
-      updateSummary(totalCostH, totalMvH, totalDivH);
-    }
-
-    function onInputChange(e) {
-      const i = parseInt(e.target.dataset.i, 10);
-      const f = e.target.dataset.f;
-      let v = e.target.value;
-      if (f === "ticker") {
-        v = v.trim().toUpperCase();
-        rows[i].ticker = v;
-        rows[i].name = "";
-        rows[i].price = null;
-        rows[i].annual_div = null;
-        rows[i].currency = rows[i].currency || "USD";
-      } else if (f === "name") {
-        rows[i].name = v.trim();
-      } else if (f === "currency") {
-        rows[i].currency = v;
-      } else if (f === "shares") {
-        rows[i].shares = v === "" ? null : num(v);
-      } else if (f === "cost") {
-        rows[i].cost = v === "" ? null : num(v);
-      } else if (f === "price") {
-        rows[i].price = v === "" ? null : num(v);
-      } else if (f === "annual_div") {
-        rows[i].annual_div = v === "" ? null : num(v);
-      }
-      render();
-      save();
-    }
-
-    function updateSummary(totalCostH, totalMvH, totalDivH) {
-      if (totalCostH === undefined) {
-        totalCostH = totalMvH = totalDivH = 0;
-        rows.forEach(r => {
-          const c = calcRow(r);
-          totalCostH += c.costHkd;
-          totalMvH += c.mvHkd;
-          totalDivH += c.divHkd;
-        });
-      }
-      const yoc = totalCostH > 0 ? totalDivH / totalCostH : null;
-      const yom = totalMvH > 0 ? totalDivH / totalMvH : null;
-      const pnl = totalMvH - totalCostH;
-      const ret = totalCostH > 0 ? pnl / totalCostH : null;
-
-      document.getElementById("s-cost").textContent = totalCostH ? fmt(totalCostH) : "—";
-      document.getElementById("s-mv").textContent = totalMvH ? fmt(totalMvH) : "—";
-      document.getElementById("s-div").textContent = totalDivH ? fmt(totalDivH) : "—";
-      document.getElementById("s-yc").textContent = yoc != null ? fmtPct(yoc) : "—";
-      document.getElementById("s-ym").textContent = yom != null ? fmtPct(yom) : "—";
-      const pnlEl = document.getElementById("s-pnl");
-      pnlEl.textContent = totalCostH ? fmt(pnl) : "—";
-      pnlEl.className = "value " + (pnl >= 0 ? "green" : "red");
-      const retEl = document.getElementById("s-ret");
-      retEl.textContent = ret != null ? fmtPct(ret) : "—";
-      retEl.className = "value " + (ret >= 0 ? "green" : "red");
-    }
-
-    function setStatus(msg, type = "") {
-      const el = document.getElementById("status");
-      el.textContent = msg;
-      el.className = "status " + type;
-    }
-
-    async function updateQuotes() {
-      const stockTickers = rows
-        .filter(r => r.type === "stock" || !r.type)
-        .map(r => (r.ticker || "").trim())
-        .filter(Boolean);
-
-      if (stockTickers.length === 0) {
-        setStatus("沒有可更新的股票／ETF", "err");
-        return;
-      }
-
-      const btn = document.getElementById("btn-update");
-      btn.disabled = true;
-      setStatus(`正在更新 ${stockTickers.length} 檔…`, "loading");
-
-      try {
-        const res = await fetch("/api/quotes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tickers: stockTickers }),
-        });
-        const data = await res.json();
-        if (data.error && (!data.results || data.results.length === 0)) {
-          throw new Error(data.error);
-        }
-
-        const map = {};
-        (data.results || []).forEach(r => { map[r.ticker] = r; });
-
-        rows.forEach(r => {
-          if (r.type === "manual" || r.type === "hk") return;
-          const t = (r.ticker || "").toUpperCase();
-          const d = map[t];
-          if (!d || d.error) return;
-          r.name = d.name;
-          r.price = d.price;
-          r.annual_div = d.annual_div;
-          r.last_div_date = d.last_div_date;
-          r.next_ex_div = d.next_ex_div;
-          // 若 API 有回傳幣別就用，否則保留使用者選擇
-          if (d.currency) r.currency = d.currency === "USD" || d.currency === "HKD" ? d.currency : (r.currency || "USD");
-          r.yahoo_yield = d.yahoo_yield;
-        });
-
-        const errors = (data.results || []).filter(r => r.error);
-        render();
-        save();
-        if (errors.length) {
-          setStatus(`部分失敗 ${errors.length} 檔 · ${data.updated_at || ""}`, "err");
-        } else {
-          setStatus(`更新完成 · ${data.updated_at || ""}`, "ok");
-        }
-      } catch (err) {
-        setStatus("更新失敗：" + err.message, "err");
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    document.getElementById("fx-rate").addEventListener("change", (e) => {
-      fxRate = parseFloat(e.target.value) || 7.8;
-      if (fxRate <= 0) fxRate = 7.8;
-      e.target.value = fxRate;
-      render();
-      save();
+async function updateQuotes(){
+  const tickers=rows.filter(r=>r.type==="stock"||!r.type).map(r=>(r.ticker||"").trim()).filter(Boolean);
+  if(!tickers.length){ setStatus("沒有可自動更新的股票/ETF","err"); return; }
+  const btn=document.getElementById("btn-update"); btn.disabled=true;
+  setStatus(`更新 ${tickers.length} 檔…`,"loading");
+  try{
+    const res=await fetch("/api/quotes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tickers})});
+    const data=await res.json();
+    if(data.error&&(!data.results||!data.results.length)) throw new Error(data.error);
+    const map={}; (data.results||[]).forEach(r=>map[r.ticker]=r);
+    rows.forEach(r=>{
+      if(r.type==="manual"||r.type==="hk") return;
+      const d=map[(r.ticker||"").toUpperCase()];
+      if(!d||d.error) return;
+      r.name=d.name; r.price=d.price; r.annual_div=d.annual_div;
+      if(d.currency==="USD"||d.currency==="HKD") r.currency=d.currency;
     });
+    renderAll(); save();
+    const errs=(data.results||[]).filter(r=>r.error);
+    setStatus(errs.length?`部分失敗 ${errs.length} 檔`:`更新完成 · ${data.updated_at||""}`, errs.length?"err":"ok");
+  }catch(e){ setStatus("更新失敗："+e.message,"err"); }
+  finally{ btn.disabled=false; }
+}
 
-    document.getElementById("btn-update").addEventListener("click", updateQuotes);
-    document.getElementById("btn-add").addEventListener("click", () => {
-      rows.push({ type: "stock", ticker: "", shares: null, cost: null, currency: "USD" });
-      render();
-    });
-    document.getElementById("btn-add-manual").addEventListener("click", () => {
-      rows.push({
-        type: "manual", name: "", shares: 1, cost: null, price: null,
-        annual_div: null, currency: "HKD",
-      });
-      render();
-    });
-    document.getElementById("btn-add-hk").addEventListener("click", () => {
-      rows.push({
-        type: "hk", ticker: "", name: "", shares: null, cost: null, price: null,
-        annual_div: null, currency: "HKD",
-      });
-      render();
-    });
-    document.getElementById("btn-save").addEventListener("click", save);
-    document.getElementById("btn-clear").addEventListener("click", () => {
-      if (confirm("確定清除所有資料？")) {
-        rows = [];
-        localStorage.removeItem(STORAGE_KEY);
-        render();
-        setStatus("已清除", "ok");
-      }
-    });
+// tabs
+document.querySelectorAll(".tabs button").forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("panel-"+btn.dataset.tab).classList.add("active");
+  };
+});
 
-    load();
-    render();
-  </script>
+document.getElementById("fx-rate").onchange=e=>{
+  fxRate=parseFloat(e.target.value)||7.8; if(fxRate<=0)fxRate=7.8; e.target.value=fxRate; renderAll(); save();
+};
+document.getElementById("btn-update").onclick=updateQuotes;
+document.getElementById("btn-add").onclick=()=>{ rows.push({type:"stock",ticker:"",shares:null,cost:null,currency:"USD",freq:"quarterly"}); renderAll(); };
+document.getElementById("btn-add-manual").onclick=()=>{ rows.push({type:"manual",name:"",shares:1,cost:null,price:null,annual_div:null,currency:"HKD",freq:"annual"}); renderAll(); };
+document.getElementById("btn-add-hk").onclick=()=>{ rows.push({type:"hk",name:"",shares:null,cost:null,price:null,annual_div:null,currency:"HKD",freq:"quarterly"}); renderAll(); };
+document.getElementById("btn-save").onclick=save;
+document.getElementById("btn-clear").onclick=()=>{
+  if(confirm("清除所有持股與月供記錄？")){ rows=[]; dcaList=[]; localStorage.removeItem(HOLD_KEY); localStorage.removeItem(DCA_KEY); renderAll(); setStatus("已清除","ok"); }
+};
+document.getElementById("btn-dca-add").onclick=()=>{
+  const month=document.getElementById("dca-month").value;
+  const name=document.getElementById("dca-name").value.trim();
+  const currency=document.getElementById("dca-cur").value;
+  const amount=num(document.getElementById("dca-amount").value);
+  const sharesVal=document.getElementById("dca-shares").value;
+  if(!month||!name||!amount){ setStatus("請填年月、名稱、金額","err"); return; }
+  dcaList.push({ month, name, currency, amount, shares:sharesVal===""?null:num(sharesVal) });
+  document.getElementById("dca-name").value="";
+  document.getElementById("dca-amount").value="";
+  document.getElementById("dca-shares").value="";
+  renderAll(); save(); setStatus("已加入月供","ok");
+};
+
+load(); renderAll();
+</script>
 </body>
 </html>
