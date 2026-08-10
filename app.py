@@ -1,22 +1,42 @@
 #!/usr/bin/env python3
 """
-股息投資組合追蹤 — 網頁版
+股息投資組合追蹤 — 網頁版（Alpha Vantage）
 執行：python app.py
-然後瀏覽器開啟 http://127.0.0.1:5000
+雲端請設定環境變數 ALPHA_VANTAGE_API_KEY
 """
 
 from flask import Flask, render_template, request, jsonify
-import yfinance as yf
-from datetime import datetime, timezone
+from datetime import datetime
+import os
 import time
+import requests
 import warnings
 
 warnings.filterwarnings("ignore")
 
 app = Flask(__name__)
 
+# 從環境變數讀取 API Key（Render 後台可設定）
+AV_API_KEY = os.environ.get("ALPHA_VANTAGE_API_KEY", "").strip()
+AV_BASE = "https://www.alphavantage.co/query"
+
+
+def av_get(params: dict) -> dict:
+    """呼叫 Alpha Vantage，回傳 JSON"""
+    if not AV_API_KEY:
+        return {"Error Message": "尚未設定 ALPHA_VANTAGE_API_KEY"}
+    params = dict(params)
+    params["apikey"] = AV_API_KEY
+    try:
+        r = requests.get(AV_BASE, params=params, timeout=20)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        return {"Error Message": str(e)}
+
+
 def fetch_one(ticker: str) -> dict:
-    """抓取單一股票的股價與派息資料"""
+    """用 Alpha Vantage 抓單一股票的股價與派息資料"""
     out = {
         "ticker": ticker,
         "name": ticker,
@@ -29,54 +49,82 @@ def fetch_one(ticker: str) -> dict:
         "yahoo_yield": None,
         "error": None,
     }
-    try:
-        t = yf.Ticker(ticker)
-        info = t.info or {}
 
-        out["name"] = info.get("shortName") or info.get("longName") or ticker
-        price = (
-            info.get("currentPrice")
-            or info.get("regularMarketPrice")
-            or info.get("previousClose")
-        )
-        if price is not None:
-            out["price"] = round(float(price), 4)
+    if not AV_API_KEY:
+        out["error"] = "伺服器尚未設定 Alpha Vantage API Key"
+        return out
 
-        annual = info.get("dividendRate") or info.get("trailingAnnualDividendRate")
-        if annual is not None:
-            out["annual_div"] = round(float(annual), 4)
+    # 1) 現價 — GLOBAL_QUOTE
+    q = av_get({"function": "GLOBAL_QUOTE", "symbol": ticker})
+    if "Error Message" in q:
+        out["error"] = q["Error Message"]
+        return out
+    if "Note" in q:
+        out["error"] = q["Note"]
+        return out
+    if "Information" in q:
+        out["error"] = q["Information"]
+        return out
 
-        dy = info.get("dividendYield")
-        if dy is not None:
-            out["yahoo_yield"] = round(float(dy), 2)
-
-        out["currency"] = info.get("currency") or ""
-
+    gq = q.get("Global Quote") or {}
+    price_str = gq.get("05. price") or gq.get("05. Price")
+    if price_str:
         try:
-            divs = t.dividends
-            if divs is not None and len(divs) > 0:
-                out["last_div_amount"] = round(float(divs.iloc[-1]), 4)
-                last_dt = divs.index[-1]
-                if hasattr(last_dt, "strftime"):
-                    out["last_div_date"] = last_dt.strftime("%Y-%m-%d")
-                else:
-                    out["last_div_date"] = str(last_dt)[:10]
-        except Exception:
+            out["price"] = round(float(price_str), 4)
+        except ValueError:
             pass
 
-        ex_ts = info.get("exDividendDate")
-        if ex_ts:
-            try:
-                if isinstance(ex_ts, (int, float)):
-                    dt = datetime.fromtimestamp(ex_ts, tz=timezone.utc)
-                    out["next_ex_div"] = dt.strftime("%Y-%m-%d")
-                else:
-                    out["next_ex_div"] = str(ex_ts)[:10]
-            except Exception:
-                pass
+    time.sleep(0.8)
 
-    except Exception as e:
-        out["error"] = str(e)
+    # 2) 基本面／派息 — OVERVIEW
+    ov = av_get({"function": "OVERVIEW", "symbol": ticker})
+    if "Error Message" in ov:
+        if not out["price"]:
+            out["error"] = ov["Error Message"]
+        return out
+    if "Note" in ov:
+        if not out["price"]:
+            out["error"] = ov["Note"]
+        return out
+    if "Information" in ov:
+        if not out["price"]:
+            out["error"] = ov["Information"]
+        return out
+
+    if not ov.get("Symbol") and not ov.get("Name"):
+        if not out["price"]:
+            out["error"] = "Alpha Vantage 無此代號資料（可能不支援港股/台股）"
+        return out
+
+    out["name"] = ov.get("Name") or ticker
+    out["currency"] = ov.get("Currency") or ""
+
+    dps = ov.get("DividendPerShare") or ""
+    if dps and dps not in ("None", "-", "0", "0.0"):
+        try:
+            out["annual_div"] = round(float(dps), 4)
+        except ValueError:
+            pass
+
+    dy = ov.get("DividendYield") or ""
+    if dy and dy not in ("None", "-", "0", "0.0"):
+        try:
+            val = float(dy)
+            if val > 1:
+                out["yahoo_yield"] = round(val, 2)
+            else:
+                out["yahoo_yield"] = round(val * 100, 2)
+        except ValueError:
+            pass
+
+    ex = ov.get("ExDividendDate") or ""
+    if ex and ex not in ("None", "-"):
+        out["next_ex_div"] = ex[:10]
+
+    dd = ov.get("DividendDate") or ""
+    if dd and dd not in ("None", "-"):
+        out["last_div_date"] = dd[:10]
+
     return out
 
 
@@ -87,13 +135,18 @@ def index():
 
 @app.route("/api/quotes", methods=["POST"])
 def api_quotes():
-    """接收 tickers 陣列，回傳最新股價與派息資料"""
     data = request.get_json(silent=True) or {}
     tickers = data.get("tickers") or []
     if not isinstance(tickers, list):
         return jsonify({"error": "tickers 必須是陣列"}), 400
 
-    # 去重並限制數量
+    if not AV_API_KEY:
+        return jsonify({
+            "error": "伺服器尚未設定 ALPHA_VANTAGE_API_KEY。請到 Render 環境變數新增此 Key。",
+            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "results": [],
+        }), 200
+
     seen = set()
     clean = []
     for t in tickers:
@@ -101,31 +154,37 @@ def api_quotes():
         if t and t not in seen:
             seen.add(t)
             clean.append(t)
-    if len(clean) > 30:
-        return jsonify({"error": "一次最多查詢 30 檔"}), 400
+
+    if len(clean) > 8:
+        return jsonify({"error": "免費 API 額度有限，一次最多查詢 8 檔。請分批更新。"}), 400
 
     results = []
     for t in clean:
         results.append(fetch_one(t))
-        time.sleep(0.25)  # 避免請求過快
+        time.sleep(0.5)
 
     return jsonify({
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "results": results,
+        "note": "Alpha Vantage 免費版約 25 次/天，請勿頻繁更新",
     })
 
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status": "ok", "time": datetime.now().isoformat()})
+    return jsonify({
+        "status": "ok",
+        "time": datetime.now().isoformat(),
+        "api_key_set": bool(AV_API_KEY),
+        "provider": "Alpha Vantage",
+    })
 
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 5000))
     print("=" * 50)
-    print("  股息投資組合追蹤 — 網頁版")
+    print("  股息投資組合追蹤 — Alpha Vantage 版")
+    print(f"  API Key 已設定: {bool(AV_API_KEY)}")
     print(f"  本機請開啟：http://127.0.0.1:{port}")
     print("=" * 50)
-    # 本機與雲端部署都適用（Render 等會注入 PORT）
     app.run(host="0.0.0.0", port=port, debug=False)
