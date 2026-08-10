@@ -17,7 +17,6 @@
       --red: #ef4444;
       --yellow: #eab308;
       --input-bg: #0d1117;
-      --manual: #a78bfa;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -27,55 +26,65 @@
       min-height: 100vh;
       line-height: 1.5;
     }
-    .container { max-width: 1400px; margin: 0 auto; padding: 24px 16px; }
+    .container { max-width: 1450px; margin: 0 auto; padding: 24px 16px; }
     header {
       display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-      gap: 16px; margin-bottom: 28px;
+      gap: 16px; margin-bottom: 20px;
     }
-    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+    h1 { font-size: 1.45rem; font-weight: 700; }
     h1 span { color: var(--accent); }
     .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    button, .btn {
+    button {
       background: var(--accent); color: #fff; border: none; border-radius: 8px;
-      padding: 9px 14px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
+      padding: 9px 14px; font-size: 0.88rem; font-weight: 600; cursor: pointer;
     }
     button:hover { background: var(--accent-hover); }
-    button:active { transform: scale(0.98); }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
     button.secondary:hover { background: var(--border); }
     button.danger { background: #b91c1c; }
-    button.danger:hover { background: #991b1b; }
     button.manual-btn { background: #6d28d9; }
     button.manual-btn:hover { background: #5b21b6; }
 
+    .fx-bar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 16px; margin-bottom: 16px; font-size: 0.9rem;
+    }
+    .fx-bar label { color: var(--muted); }
+    .fx-bar input {
+      background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); padding: 5px 8px; width: 80px; text-align: center; font-weight: 600;
+    }
+    .fx-bar .note { color: var(--muted); font-size: 0.82rem; }
+
     .summary {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 12px; margin-bottom: 24px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 10px; margin-bottom: 20px;
     }
     .card {
       background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-      padding: 14px 16px;
+      padding: 12px 14px;
     }
-    .card .label { font-size: 0.78rem; color: var(--muted); margin-bottom: 4px; }
-    .card .value { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .card .label { font-size: 0.75rem; color: var(--muted); margin-bottom: 3px; }
+    .card .value { font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
     .card .value.green { color: var(--green); }
     .card .value.red { color: var(--red); }
     .card .value.blue { color: #60a5fa; }
+    .card .unit { font-size: 0.72rem; color: var(--muted); font-weight: 500; }
 
     .table-wrap {
       background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-      overflow-x: auto; margin-bottom: 20px;
+      overflow-x: auto; margin-bottom: 18px;
     }
-    table { width: 100%; border-collapse: collapse; min-width: 1200px; }
+    table { width: 100%; border-collapse: collapse; min-width: 1280px; }
     th, td {
-      padding: 9px 10px; text-align: center; border-bottom: 1px solid var(--border);
-      font-size: 0.88rem; white-space: nowrap;
+      padding: 8px 9px; text-align: center; border-bottom: 1px solid var(--border);
+      font-size: 0.85rem; white-space: nowrap;
     }
     th {
-      background: #15202b; color: var(--muted); font-weight: 600; font-size: 0.75rem;
-      text-transform: uppercase; letter-spacing: 0.03em; position: sticky; top: 0;
+      background: #15202b; color: var(--muted); font-weight: 600; font-size: 0.72rem;
+      text-transform: uppercase; letter-spacing: 0.02em; position: sticky; top: 0;
     }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: rgba(59, 130, 246, 0.06); }
@@ -84,37 +93,36 @@
 
     input[type="text"], input[type="number"], select {
       background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px;
-      color: var(--text); padding: 5px 7px; width: 100%; max-width: 110px;
-      font-size: 0.88rem; text-align: center;
+      color: var(--text); padding: 4px 6px; width: 100%; max-width: 100px;
+      font-size: 0.85rem; text-align: center;
     }
     input:focus, select:focus { outline: none; border-color: var(--accent); }
-    input.ticker { max-width: 100px; font-weight: 600; color: #93c5fd; }
-    input.name-input { max-width: 130px; text-align: left; }
-    select.type-sel { max-width: 90px; color: var(--text); }
-    .name-cell { text-align: left !important; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
-    .muted { color: var(--muted); font-size: 0.82rem; }
+    input.ticker { max-width: 95px; font-weight: 600; color: #93c5fd; }
+    input.name-input { max-width: 120px; text-align: left; }
+    select.cur-sel { max-width: 72px; font-weight: 600; }
+    .muted { color: var(--muted); font-size: 0.8rem; }
     .badge {
-      display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;
+      display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;
     }
     .badge-stock { background: #1e3a5f; color: #93c5fd; }
     .badge-manual { background: #4c1d95; color: #c4b5fd; }
 
-    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
-    .status { font-size: 0.85rem; color: var(--muted); margin-left: auto; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+    .status { font-size: 0.84rem; color: var(--muted); margin-left: auto; }
     .status.loading { color: var(--yellow); }
     .status.ok { color: var(--green); }
     .status.err { color: var(--red); }
 
     footer {
-      margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--border);
-      font-size: 0.8rem; color: var(--muted); text-align: center;
+      margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--border);
+      font-size: 0.78rem; color: var(--muted); text-align: center;
     }
     .hint {
-      background: #1e293b; border-left: 3px solid var(--accent); padding: 12px 16px;
-      border-radius: 0 8px 8px 0; margin-bottom: 18px; font-size: 0.86rem; color: var(--muted);
+      background: #1e293b; border-left: 3px solid var(--accent); padding: 11px 14px;
+      border-radius: 0 8px 8px 0; margin-bottom: 16px; font-size: 0.84rem; color: var(--muted);
     }
     .hint strong { color: var(--text); }
-    .empty-row td { color: var(--muted); font-style: italic; padding: 24px; }
+    .empty-row td { color: var(--muted); font-style: italic; padding: 22px; }
   </style>
 </head>
 <body>
@@ -131,19 +139,26 @@
     </header>
 
     <div class="hint">
-      <strong>兩種類型：</strong><br>
-      • <span class="badge badge-stock">股票/ETF</span> 輸入 Ticker（美股如 AAPL、債券 ETF 如 TLT、BND），點「更新」自動抓價與配息。<br>
-      • <span class="badge badge-manual">固定收益</span> 手動輸入名稱、本金、現值、每年利息／票息（適用單一債券、定存、零售債等）。<br>
-      Alpha Vantage 免費約 25 次/天，一次建議 ≤8 檔股票。資料存在瀏覽器本機。
+      <strong>幣別與換算：</strong>每列可選 <strong>HKD</strong> 或 <strong>USD</strong>。上方摘要一律以 <strong>港元 (HKD)</strong> 顯示，美元按匯率換算。<br>
+      • <span class="badge badge-stock">股票/ETF</span> 輸入 Ticker，點「更新」自動抓價。<br>
+      • <span class="badge badge-manual">固定收益</span> 手動填名稱、本金、現值、年利息。
     </div>
 
-    <div class="summary" id="summary">
-      <div class="card"><div class="label">總投資成本</div><div class="value" id="s-cost">—</div></div>
-      <div class="card"><div class="label">總市值</div><div class="value blue" id="s-mv">—</div></div>
-      <div class="card"><div class="label">總預估年息</div><div class="value green" id="s-div">—</div></div>
+    <div class="fx-bar">
+      <label>匯率設定：</label>
+      <span>1 USD =</span>
+      <input type="number" id="fx-rate" value="7.8" min="0.01" step="0.01" title="美元兌港元" />
+      <span>HKD</span>
+      <span class="note">（可自行修改，總計會即時重算）</span>
+    </div>
+
+    <div class="summary">
+      <div class="card"><div class="label">總投資成本</div><div class="value" id="s-cost">—</div><div class="unit">HKD</div></div>
+      <div class="card"><div class="label">總市值</div><div class="value blue" id="s-mv">—</div><div class="unit">HKD</div></div>
+      <div class="card"><div class="label">總預估年息</div><div class="value green" id="s-div">—</div><div class="unit">HKD</div></div>
       <div class="card"><div class="label">組合成本息率</div><div class="value" id="s-yc">—</div></div>
       <div class="card"><div class="label">組合市值息率</div><div class="value" id="s-ym">—</div></div>
-      <div class="card"><div class="label">未實現損益</div><div class="value" id="s-pnl">—</div></div>
+      <div class="card"><div class="label">未實現損益</div><div class="value" id="s-pnl">—</div><div class="unit">HKD</div></div>
       <div class="card"><div class="label">未實現報酬率</div><div class="value" id="s-ret">—</div></div>
     </div>
 
@@ -158,18 +173,20 @@
             <th>類型</th>
             <th>Ticker／名稱</th>
             <th>名稱</th>
+            <th>幣別</th>
             <th>數量</th>
             <th>成本/本金</th>
             <th>投資成本</th>
             <th>現價/現值</th>
             <th>市值</th>
+            <th>成本(HKD)</th>
+            <th>市值(HKD)</th>
             <th>權重</th>
             <th>每股年息<br>或年利息</th>
             <th>預估年息</th>
+            <th>年息(HKD)</th>
             <th>成本息率</th>
             <th>市值息率</th>
-            <th>除淨/相關日</th>
-            <th>幣別</th>
             <th></th>
           </tr>
         </thead>
@@ -178,33 +195,41 @@
     </div>
 
     <footer>
-      股票／ETF 資料：Alpha Vantage（免費約 25 次/天）｜固定收益為手動輸入<br>
-      不同貨幣請自行注意匯率｜僅供參考，不構成投資建議
+      摘要一律換算為 HKD（可調匯率）｜股票資料：Alpha Vantage｜固定收益為手動輸入｜僅供參考
     </footer>
   </div>
 
   <script>
-    const STORAGE_KEY = "dividend_portfolio_v2";
+    const STORAGE_KEY = "dividend_portfolio_v3";
+    const FX_KEY = "dividend_fx_rate";
 
     const DEFAULT_ROWS = [
-      { type: "stock", ticker: "AAPL", shares: 50, cost: 180 },
-      { type: "stock", ticker: "MSFT", shares: 30, cost: 350 },
-      { type: "stock", ticker: "JNJ", shares: 40, cost: 155 },
-      { type: "stock", ticker: "KO", shares: 100, cost: 58 },
-      { type: "stock", ticker: "TLT", shares: 20, cost: 95 },
-      { type: "manual", ticker: "", name: "示例：公司債 XYZ 2030", shares: 1, cost: 100000, price: 98000, annual_div: 4500, currency: "HKD" },
+      { type: "stock", ticker: "AAPL", shares: 50, cost: 180, currency: "USD" },
+      { type: "stock", ticker: "MSFT", shares: 30, cost: 350, currency: "USD" },
+      { type: "stock", ticker: "JNJ", shares: 40, cost: 155, currency: "USD" },
+      { type: "stock", ticker: "KO", shares: 100, cost: 58, currency: "USD" },
+      { type: "stock", ticker: "TLT", shares: 20, cost: 95, currency: "USD" },
+      { type: "manual", name: "示例：港元定存／債券", shares: 1, cost: 100000, price: 100000, annual_div: 4000, currency: "HKD" },
+      { type: "manual", name: "示例：美元債券", shares: 1, cost: 10000, price: 9800, annual_div: 450, currency: "USD" },
     ];
 
     let rows = [];
+    let fxRate = 7.8;
 
     function load() {
       try {
+        const fr = localStorage.getItem(FX_KEY);
+        if (fr) fxRate = parseFloat(fr) || 7.8;
+        document.getElementById("fx-rate").value = fxRate;
+
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
           rows = JSON.parse(raw);
           if (!Array.isArray(rows) || rows.length === 0) rows = DEFAULT_ROWS.map(r => ({ ...r }));
-          // 相容舊版沒有 type
-          rows.forEach(r => { if (!r.type) r.type = "stock"; });
+          rows.forEach(r => {
+            if (!r.type) r.type = "stock";
+            if (!r.currency) r.currency = "USD";
+          });
         } else {
           rows = DEFAULT_ROWS.map(r => ({ ...r }));
         }
@@ -215,7 +240,14 @@
 
     function save() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+      localStorage.setItem(FX_KEY, String(fxRate));
       setStatus("已儲存至本機", "ok");
+    }
+
+    function toHKD(amount, currency) {
+      if (amount == null || isNaN(amount)) return 0;
+      if ((currency || "HKD").toUpperCase() === "USD") return amount * fxRate;
+      return amount;
     }
 
     function fmt(n, d = 2) {
@@ -235,15 +267,20 @@
       const isManual = r.type === "manual";
       const shares = num(r.shares) || (isManual ? 1 : 0);
       const cost = num(r.cost);
-      const price = isManual ? (r.price != null && r.price !== "" ? num(r.price) : cost) : num(r.price);
+      const price = isManual
+        ? (r.price != null && r.price !== "" ? num(r.price) : cost)
+        : num(r.price);
       const annual = num(r.annual_div);
       const costBasis = isManual ? cost : shares * cost;
       const mv = isManual ? price : shares * price;
-      // 手動：annual_div 直接是「每年總利息」；股票：每股年息 × 股數
       const estDiv = isManual ? annual : shares * annual;
+      const cur = (r.currency || "HKD").toUpperCase();
+      const costHkd = toHKD(costBasis, cur);
+      const mvHkd = toHKD(mv, cur);
+      const divHkd = toHKD(estDiv, cur);
       const yoc = costBasis > 0 ? estDiv / costBasis : null;
       const yom = mv > 0 ? estDiv / mv : null;
-      return { costBasis, mv, estDiv, yoc, yom, shares, price };
+      return { costBasis, mv, estDiv, yoc, yom, costHkd, mvHkd, divHkd, shares, price };
     }
 
     function esc(s) {
@@ -257,23 +294,23 @@
       tbody.innerHTML = "";
 
       if (rows.length === 0) {
-        tbody.innerHTML = `<tr class="empty-row"><td colspan="16">尚無資料，請新增股票／ETF 或固定收益</td></tr>`;
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="18">尚無資料，請新增股票／ETF 或固定收益</td></tr>`;
         updateSummary();
         return;
       }
 
-      let totalCost = 0, totalMv = 0, totalDiv = 0;
+      let totalCostH = 0, totalMvH = 0, totalDivH = 0;
       rows.forEach(r => {
         const c = calcRow(r);
-        totalCost += c.costBasis;
-        totalMv += c.mv;
-        totalDiv += c.estDiv;
+        totalCostH += c.costHkd;
+        totalMvH += c.mvHkd;
+        totalDivH += c.divHkd;
       });
 
       rows.forEach((r, i) => {
         const isManual = r.type === "manual";
         const c = calcRow(r);
-        const weight = totalMv > 0 ? c.mv / totalMv : 0;
+        const weight = totalMvH > 0 ? c.mvHkd / totalMvH : 0;
         const tr = document.createElement("tr");
         if (isManual) tr.classList.add("manual-row");
 
@@ -281,27 +318,31 @@
           ? `<span class="badge badge-manual">固定收益</span>`
           : `<span class="badge badge-stock">股票/ETF</span>`;
 
-        // Ticker / 名稱輸入
         const tickerOrName = isManual
           ? `<input class="name-input" type="text" value="${esc(r.name || "")}" data-i="${i}" data-f="name" placeholder="債券／定存名稱" />`
           : `<input class="ticker" type="text" value="${esc(r.ticker || "")}" data-i="${i}" data-f="ticker" placeholder="AAPL" />`;
 
         const nameDisplay = isManual
           ? `<span class="muted">手動</span>`
-          : `<span class="name-cell" title="${esc(r.name || "")}">${esc(r.name || "—")}</span>`;
+          : `<span title="${esc(r.name || "")}">${esc(r.name || "—")}</span>`;
 
-        // 現價：股票唯讀（API），手動可填
+        const cur = (r.currency || "HKD").toUpperCase();
+        const curSel = `
+          <select class="cur-sel" data-i="${i}" data-f="currency">
+            <option value="HKD" ${cur === "HKD" ? "selected" : ""}>HKD</option>
+            <option value="USD" ${cur === "USD" ? "selected" : ""}>USD</option>
+          </select>`;
+
         const priceCell = isManual
           ? `<input type="number" value="${r.price ?? ""}" data-i="${i}" data-f="price" min="0" step="0.01" placeholder="現值" />`
           : (r.price != null ? fmt(r.price, 2) : "—");
 
-        // 年息：股票 API 填；手動可填「每年總利息」
         const annualCell = isManual
           ? `<input type="number" value="${r.annual_div ?? ""}" data-i="${i}" data-f="annual_div" min="0" step="0.01" placeholder="年利息" />`
           : (r.annual_div != null ? fmt(r.annual_div, 4) : "—");
 
         const sharesCell = isManual
-          ? `<input type="number" value="${r.shares ?? 1}" data-i="${i}" data-f="shares" min="0" step="1" title="張數／單位，可填1" />`
+          ? `<input type="number" value="${r.shares ?? 1}" data-i="${i}" data-f="shares" min="0" step="1" />`
           : `<input type="number" value="${r.shares ?? ""}" data-i="${i}" data-f="shares" min="0" step="1" />`;
 
         const costCell = `<input type="number" value="${r.cost ?? ""}" data-i="${i}" data-f="cost" min="0" step="0.01" placeholder="${isManual ? "本金" : "每股成本"}" />`;
@@ -310,26 +351,28 @@
           <td>${typeBadge}</td>
           <td>${tickerOrName}</td>
           <td>${nameDisplay}</td>
+          <td>${curSel}</td>
           <td>${sharesCell}</td>
           <td>${costCell}</td>
           <td>${fmt(c.costBasis)}</td>
           <td>${priceCell}</td>
           <td>${c.mv ? fmt(c.mv) : "—"}</td>
-          <td>${c.mv ? fmtPct(weight) : "—"}</td>
+          <td>${c.costHkd ? fmt(c.costHkd) : "—"}</td>
+          <td>${c.mvHkd ? fmt(c.mvHkd) : "—"}</td>
+          <td>${c.mvHkd ? fmtPct(weight) : "—"}</td>
           <td>${annualCell}</td>
           <td>${c.estDiv ? fmt(c.estDiv) : "—"}</td>
+          <td>${c.divHkd ? fmt(c.divHkd) : "—"}</td>
           <td>${c.yoc != null ? fmtPct(c.yoc) : "—"}</td>
           <td>${c.yom != null ? fmtPct(c.yom) : "—"}</td>
-          <td class="muted">${isManual ? "—" : (r.next_ex_div || r.last_div_date || "—")}</td>
-          <td class="muted">${esc(r.currency || "")}${!isManual && r.yahoo_yield != null ? " · " + r.yahoo_yield + "%" : ""}</td>
-          <td><button type="button" class="secondary" style="padding:4px 8px;font-size:0.78rem" data-del="${i}">刪</button></td>
+          <td><button type="button" class="secondary" style="padding:3px 7px;font-size:0.75rem" data-del="${i}">刪</button></td>
         `;
         tbody.appendChild(tr);
       });
 
-      tbody.querySelectorAll("input").forEach(inp => {
-        inp.addEventListener("change", onInputChange);
-        inp.addEventListener("blur", onInputChange);
+      tbody.querySelectorAll("input, select").forEach(el => {
+        el.addEventListener("change", onInputChange);
+        if (el.tagName === "INPUT") el.addEventListener("blur", onInputChange);
       });
       tbody.querySelectorAll("[data-del]").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -339,7 +382,7 @@
         });
       });
 
-      updateSummary(totalCost, totalMv, totalDiv);
+      updateSummary(totalCostH, totalMvH, totalDivH);
     }
 
     function onInputChange(e) {
@@ -352,12 +395,11 @@
         rows[i].name = "";
         rows[i].price = null;
         rows[i].annual_div = null;
-        rows[i].last_div_date = null;
-        rows[i].next_ex_div = null;
-        rows[i].currency = "";
-        rows[i].yahoo_yield = null;
+        rows[i].currency = rows[i].currency || "USD";
       } else if (f === "name") {
         rows[i].name = v.trim();
+      } else if (f === "currency") {
+        rows[i].currency = v;
       } else if (f === "shares") {
         rows[i].shares = v === "" ? null : num(v);
       } else if (f === "cost") {
@@ -371,28 +413,28 @@
       save();
     }
 
-    function updateSummary(totalCost, totalMv, totalDiv) {
-      if (totalCost === undefined) {
-        totalCost = totalMv = totalDiv = 0;
+    function updateSummary(totalCostH, totalMvH, totalDivH) {
+      if (totalCostH === undefined) {
+        totalCostH = totalMvH = totalDivH = 0;
         rows.forEach(r => {
           const c = calcRow(r);
-          totalCost += c.costBasis;
-          totalMv += c.mv;
-          totalDiv += c.estDiv;
+          totalCostH += c.costHkd;
+          totalMvH += c.mvHkd;
+          totalDivH += c.divHkd;
         });
       }
-      const yoc = totalCost > 0 ? totalDiv / totalCost : null;
-      const yom = totalMv > 0 ? totalDiv / totalMv : null;
-      const pnl = totalMv - totalCost;
-      const ret = totalCost > 0 ? pnl / totalCost : null;
+      const yoc = totalCostH > 0 ? totalDivH / totalCostH : null;
+      const yom = totalMvH > 0 ? totalDivH / totalMvH : null;
+      const pnl = totalMvH - totalCostH;
+      const ret = totalCostH > 0 ? pnl / totalCostH : null;
 
-      document.getElementById("s-cost").textContent = totalCost ? fmt(totalCost) : "—";
-      document.getElementById("s-mv").textContent = totalMv ? fmt(totalMv) : "—";
-      document.getElementById("s-div").textContent = totalDiv ? fmt(totalDiv) : "—";
+      document.getElementById("s-cost").textContent = totalCostH ? fmt(totalCostH) : "—";
+      document.getElementById("s-mv").textContent = totalMvH ? fmt(totalMvH) : "—";
+      document.getElementById("s-div").textContent = totalDivH ? fmt(totalDivH) : "—";
       document.getElementById("s-yc").textContent = yoc != null ? fmtPct(yoc) : "—";
       document.getElementById("s-ym").textContent = yom != null ? fmtPct(yom) : "—";
       const pnlEl = document.getElementById("s-pnl");
-      pnlEl.textContent = totalCost ? fmt(pnl) : "—";
+      pnlEl.textContent = totalCostH ? fmt(pnl) : "—";
       pnlEl.className = "value " + (pnl >= 0 ? "green" : "red");
       const retEl = document.getElementById("s-ret");
       retEl.textContent = ret != null ? fmtPct(ret) : "—";
@@ -412,13 +454,13 @@
         .filter(Boolean);
 
       if (stockTickers.length === 0) {
-        setStatus("沒有可更新的股票／ETF（固定收益請手動填寫）", "err");
+        setStatus("沒有可更新的股票／ETF", "err");
         return;
       }
 
       const btn = document.getElementById("btn-update");
       btn.disabled = true;
-      setStatus(`正在更新 ${stockTickers.length} 檔股票／ETF…`, "loading");
+      setStatus(`正在更新 ${stockTickers.length} 檔…`, "loading");
 
       try {
         const res = await fetch("/api/quotes", {
@@ -438,18 +480,14 @@
           if (r.type === "manual") return;
           const t = (r.ticker || "").toUpperCase();
           const d = map[t];
-          if (!d) return;
-          if (d.error) {
-            // 保留舊資料，但在狀態顯示錯誤
-            return;
-          }
+          if (!d || d.error) return;
           r.name = d.name;
           r.price = d.price;
           r.annual_div = d.annual_div;
-          r.last_div_amount = d.last_div_amount;
           r.last_div_date = d.last_div_date;
           r.next_ex_div = d.next_ex_div;
-          r.currency = d.currency;
+          // 若 API 有回傳幣別就用，否則保留使用者選擇
+          if (d.currency) r.currency = d.currency === "USD" || d.currency === "HKD" ? d.currency : (r.currency || "USD");
           r.yahoo_yield = d.yahoo_yield;
         });
 
@@ -457,33 +495,34 @@
         render();
         save();
         if (errors.length) {
-          setStatus(`部分失敗 ${errors.length} 檔（可能額度用完或代號不支援）· ${data.updated_at || ""}`, "err");
+          setStatus(`部分失敗 ${errors.length} 檔 · ${data.updated_at || ""}`, "err");
         } else {
           setStatus(`更新完成 · ${data.updated_at || ""}`, "ok");
         }
       } catch (err) {
-        console.error(err);
         setStatus("更新失敗：" + err.message, "err");
       } finally {
         btn.disabled = false;
       }
     }
 
+    document.getElementById("fx-rate").addEventListener("change", (e) => {
+      fxRate = parseFloat(e.target.value) || 7.8;
+      if (fxRate <= 0) fxRate = 7.8;
+      e.target.value = fxRate;
+      render();
+      save();
+    });
+
     document.getElementById("btn-update").addEventListener("click", updateQuotes);
     document.getElementById("btn-add").addEventListener("click", () => {
-      rows.push({ type: "stock", ticker: "", shares: null, cost: null });
+      rows.push({ type: "stock", ticker: "", shares: null, cost: null, currency: "USD" });
       render();
     });
     document.getElementById("btn-add-manual").addEventListener("click", () => {
       rows.push({
-        type: "manual",
-        ticker: "",
-        name: "",
-        shares: 1,
-        cost: null,
-        price: null,
-        annual_div: null,
-        currency: "",
+        type: "manual", name: "", shares: 1, cost: null, price: null,
+        annual_div: null, currency: "HKD",
       });
       render();
     });
