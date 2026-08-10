@@ -106,6 +106,9 @@
     }
     .badge-stock { background: #1e3a5f; color: #93c5fd; }
     .badge-manual { background: #4c1d95; color: #c4b5fd; }
+    .badge-hk { background: #78350f; color: #fcd34d; }
+    tr.hk-row td { background: rgba(245, 158, 11, 0.06); }
+    tr.hk-row:hover td { background: rgba(245, 158, 11, 0.12); }
 
     .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
     .status { font-size: 0.84rem; color: var(--muted); margin-left: auto; }
@@ -133,6 +136,7 @@
         <button type="button" id="btn-update">🔄 更新股價與派息</button>
         <button type="button" class="secondary" id="btn-add">＋ 股票／ETF</button>
         <button type="button" class="manual-btn" id="btn-add-manual">＋ 固定收益／債券</button>
+        <button type="button" class="secondary" id="btn-add-hk" style="border-color:#f59e0b;color:#fbbf24;">＋ 港股手動</button>
         <button type="button" class="secondary" id="btn-save">💾 儲存</button>
         <button type="button" class="danger" id="btn-clear">清除全部</button>
       </div>
@@ -141,7 +145,8 @@
     <div class="hint">
       <strong>幣別與換算：</strong>每列可選 <strong>HKD</strong> 或 <strong>USD</strong>。上方摘要一律以 <strong>港元 (HKD)</strong> 顯示，美元按匯率換算。<br>
       • <span class="badge badge-stock">股票/ETF</span> 輸入 Ticker，點「更新」自動抓價。<br>
-      • <span class="badge badge-manual">固定收益</span> 手動填名稱、本金、現值、年利息。
+      • <span class="badge badge-manual">固定收益</span> 手動填名稱、本金、現值、年利息（債券／定存）。
+      • <span class="badge" style="background:#78350f;color:#fcd34d;">港股手動</span> 用股數、每股成本、現價、每股年息輸入（不經 API）。
     </div>
 
     <div class="fx-bar">
@@ -195,7 +200,7 @@
     </div>
 
     <footer>
-      摘要一律換算為 HKD（可調匯率）｜股票資料：Twelve Data｜固定收益為手動輸入｜僅供參考
+      摘要一律換算為 HKD（可調匯率）｜股票資料：Finnhub｜固定收益為手動輸入｜僅供參考
     </footer>
   </div>
 
@@ -228,7 +233,7 @@
           if (!Array.isArray(rows) || rows.length === 0) rows = DEFAULT_ROWS.map(r => ({ ...r }));
           rows.forEach(r => {
             if (!r.type) r.type = "stock";
-            if (!r.currency) r.currency = "USD";
+            if (!r.currency) r.currency = r.type === "hk" || r.type === "manual" ? "HKD" : "USD";
           });
         } else {
           rows = DEFAULT_ROWS.map(r => ({ ...r }));
@@ -265,12 +270,14 @@
 
     function calcRow(r) {
       const isManual = r.type === "manual";
+      const isHk = r.type === "hk";
       const shares = num(r.shares) || (isManual ? 1 : 0);
       const cost = num(r.cost);
       const price = isManual
         ? (r.price != null && r.price !== "" ? num(r.price) : cost)
         : num(r.price);
       const annual = num(r.annual_div);
+      // manual=總額；stock/hk=每股×數量
       const costBasis = isManual ? cost : shares * cost;
       const mv = isManual ? price : shares * price;
       const estDiv = isManual ? annual : shares * annual;
@@ -309,22 +316,31 @@
 
       rows.forEach((r, i) => {
         const isManual = r.type === "manual";
+        const isHk = r.type === "hk";
+        const isAuto = r.type === "stock" || !r.type;
         const c = calcRow(r);
         const weight = totalMvH > 0 ? c.mvHkd / totalMvH : 0;
         const tr = document.createElement("tr");
         if (isManual) tr.classList.add("manual-row");
+        if (isHk) tr.classList.add("hk-row");
 
         const typeBadge = isManual
           ? `<span class="badge badge-manual">固定收益</span>`
-          : `<span class="badge badge-stock">股票/ETF</span>`;
+          : isHk
+            ? `<span class="badge badge-hk">港股手動</span>`
+            : `<span class="badge badge-stock">股票/ETF</span>`;
 
         const tickerOrName = isManual
           ? `<input class="name-input" type="text" value="${esc(r.name || "")}" data-i="${i}" data-f="name" placeholder="債券／定存名稱" />`
-          : `<input class="ticker" type="text" value="${esc(r.ticker || "")}" data-i="${i}" data-f="ticker" placeholder="AAPL" />`;
+          : isHk
+            ? `<input class="name-input" type="text" value="${esc(r.name || r.ticker || "")}" data-i="${i}" data-f="name" placeholder="如 匯豐 0005" />`
+            : `<input class="ticker" type="text" value="${esc(r.ticker || "")}" data-i="${i}" data-f="ticker" placeholder="AAPL" />`;
 
         const nameDisplay = isManual
           ? `<span class="muted">手動</span>`
-          : `<span title="${esc(r.name || "")}">${esc(r.name || "—")}</span>`;
+          : isHk
+            ? `<span class="muted">HKD 港股</span>`
+            : `<span title="${esc(r.name || "")}">${esc(r.name || "—")}</span>`;
 
         const cur = (r.currency || "HKD").toUpperCase();
         const curSel = `
@@ -333,12 +349,12 @@
             <option value="USD" ${cur === "USD" ? "selected" : ""}>USD</option>
           </select>`;
 
-        const priceCell = isManual
-          ? `<input type="number" value="${r.price ?? ""}" data-i="${i}" data-f="price" min="0" step="0.01" placeholder="現值" />`
+        const priceCell = (isManual || isHk)
+          ? `<input type="number" value="${r.price ?? ""}" data-i="${i}" data-f="price" min="0" step="0.01" placeholder="${isHk ? "每股現價" : "現值"}" />`
           : (r.price != null ? fmt(r.price, 2) : "—");
 
-        const annualCell = isManual
-          ? `<input type="number" value="${r.annual_div ?? ""}" data-i="${i}" data-f="annual_div" min="0" step="0.01" placeholder="年利息" />`
+        const annualCell = (isManual || isHk)
+          ? `<input type="number" value="${r.annual_div ?? ""}" data-i="${i}" data-f="annual_div" min="0" step="0.01" placeholder="${isHk ? "每股年息" : "年利息"}" />`
           : (r.annual_div != null ? fmt(r.annual_div, 4) : "—");
 
         const sharesCell = isManual
@@ -449,7 +465,7 @@
 
     async function updateQuotes() {
       const stockTickers = rows
-        .filter(r => r.type !== "manual")
+        .filter(r => r.type === "stock" || !r.type)
         .map(r => (r.ticker || "").trim())
         .filter(Boolean);
 
@@ -477,7 +493,7 @@
         (data.results || []).forEach(r => { map[r.ticker] = r; });
 
         rows.forEach(r => {
-          if (r.type === "manual") return;
+          if (r.type === "manual" || r.type === "hk") return;
           const t = (r.ticker || "").toUpperCase();
           const d = map[t];
           if (!d || d.error) return;
@@ -522,6 +538,13 @@
     document.getElementById("btn-add-manual").addEventListener("click", () => {
       rows.push({
         type: "manual", name: "", shares: 1, cost: null, price: null,
+        annual_div: null, currency: "HKD",
+      });
+      render();
+    });
+    document.getElementById("btn-add-hk").addEventListener("click", () => {
+      rows.push({
+        type: "hk", ticker: "", name: "", shares: null, cost: null, price: null,
         annual_div: null, currency: "HKD",
       });
       render();
