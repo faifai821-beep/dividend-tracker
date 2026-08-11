@@ -129,12 +129,13 @@
   <!-- 月供 -->
   <div class="panel" id="panel-dca">
     <h2>💵 月供股票記錄</h2>
+    <p class="muted" style="margin-bottom:8px">加入後會<strong>自動合併</strong>到持股明細：同名（Ticker／名稱）股數加總，並重算<strong>平均成本</strong>。建議填寫股數；名稱請與持股列一致（如 AAPL 或 匯豐 0005）。</p>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
       <input type="month" id="dca-month" style="max-width:140px" />
-      <input type="text" id="dca-name" placeholder="名稱／Ticker" style="max-width:120px;text-align:left" />
+      <input type="text" id="dca-name" placeholder="名稱／Ticker（需與持股一致）" style="max-width:160px;text-align:left" />
       <select id="dca-cur" style="max-width:70px"><option value="HKD">HKD</option><option value="USD">USD</option></select>
-      <input type="number" id="dca-amount" placeholder="金額" min="0" step="1" style="max-width:100px" />
-      <input type="number" id="dca-shares" placeholder="股數(可空)" min="0" step="1" style="max-width:100px" />
+      <input type="number" id="dca-amount" placeholder="投入金額" min="0" step="1" style="max-width:100px" />
+      <input type="number" id="dca-shares" placeholder="股數（建議填）" min="0" step="0.0001" style="max-width:110px" />
       <button type="button" id="btn-dca-add">＋ 加入月供</button>
     </div>
     <div class="summary" style="margin-bottom:12px">
@@ -403,18 +404,103 @@ document.getElementById("btn-save").onclick=save;
 document.getElementById("btn-clear").onclick=()=>{
   if(confirm("清除所有持股與月供記錄？")){ rows=[]; dcaList=[]; localStorage.removeItem(HOLD_KEY); localStorage.removeItem(DCA_KEY); renderAll(); setStatus("已清除","ok"); }
 };
+function normName(s){ return String(s||"").trim().toUpperCase().replace(/\s+/g," "); }
+
+function findHoldingIndex(name){
+  const n = normName(name);
+  if(!n) return -1;
+  return rows.findIndex(r => {
+    const t = normName(r.ticker);
+    const nm = normName(r.name);
+    return (t && t === n) || (nm && nm === n) ||
+           (t && (n === t || n.includes(t) || t.includes(n))) ||
+           (nm && (n === nm || n.includes(nm) || nm.includes(n)));
+  });
+}
+
+function amountInHoldingCurrency(amount, dcaCur, holdCur){
+  const a = num(amount);
+  const dc = (dcaCur||"HKD").toUpperCase();
+  const hc = (holdCur||"HKD").toUpperCase();
+  if(dc === hc) return a;
+  if(dc === "USD" && hc === "HKD") return a * fxRate;
+  if(dc === "HKD" && hc === "USD") return fxRate > 0 ? a / fxRate : a;
+  return a;
+}
+
+/** 月供併入持股：加總股數、重算平均成本 */
+function mergeDcaIntoHolding(name, currency, amount, shares){
+  let idx = findHoldingIndex(name);
+  let addShares = (shares != null && shares > 0) ? shares : null;
+
+  // 無同名 → 新建
+  if(idx < 0){
+    if(!addShares){
+      setStatus("無同名持股，請填寫「股數」以建立新持股列","err");
+      return { ok:false };
+    }
+    const unitCost = amount / addShares;
+    const cur = (currency||"HKD").toUpperCase();
+    const looksLikeUsTicker = /^[A-Z]{1,5}$/.test(name.trim().toUpperCase());
+    const row = {
+      type: looksLikeUsTicker ? "stock" : (cur === "HKD" ? "hk" : "stock"),
+      ticker: looksLikeUsTicker ? name.trim().toUpperCase() : "",
+      name: looksLikeUsTicker ? "" : name.trim(),
+      shares: addShares,
+      cost: Math.round(unitCost * 10000) / 10000,
+      price: null,
+      annual_div: null,
+      currency: cur,
+      freq: "quarterly",
+    };
+    rows.push(row);
+    return { ok:true, created:true, row };
+  }
+
+  const r = rows[idx];
+  const oldShares = num(r.shares);
+  const oldCost = num(r.cost);
+
+  if(!addShares){
+    const px = num(r.price);
+    if(px > 0){
+      const amtHold = amountInHoldingCurrency(amount, currency, r.currency);
+      addShares = amtHold / px;
+    } else {
+      setStatus("請填寫股數（或先更新該股現價）","err");
+      return { ok:false };
+    }
+  }
+
+  const amtInHold = amountInHoldingCurrency(amount, currency, r.currency);
+  const newShares = oldShares + addShares;
+  const newAvg = newShares > 0 ? (oldShares * oldCost + amtInHold) / newShares : oldCost;
+  r.shares = Math.round(newShares * 10000) / 10000;
+  r.cost = Math.round(newAvg * 10000) / 10000;
+  return { ok:true, created:false, row:r, addShares };
+}
+
 document.getElementById("btn-dca-add").onclick=()=>{
   const month=document.getElementById("dca-month").value;
   const name=document.getElementById("dca-name").value.trim();
   const currency=document.getElementById("dca-cur").value;
   const amount=num(document.getElementById("dca-amount").value);
   const sharesVal=document.getElementById("dca-shares").value;
-  if(!month||!name||!amount){ setStatus("請填年月、名稱、金額","err"); return; }
-  dcaList.push({ month, name, currency, amount, shares:sharesVal===""?null:num(sharesVal) });
-  document.getElementById("dca-name").value="";
-  document.getElementById("dca-amount").value="";
-  document.getElementById("dca-shares").value="";
-  renderAll(); save(); setStatus("已加入月供","ok");
+  const shares = sharesVal === "" ? null : num(sharesVal);
+  if(!month || !name || !amount){ setStatus("請填年月、名稱、金額","err"); return; }
+
+  const result = mergeDcaIntoHolding(name, currency, amount, shares);
+  if(!result.ok) return;
+
+  dcaList.push({ month, name, currency, amount, shares });
+  document.getElementById("dca-name").value = "";
+  document.getElementById("dca-amount").value = "";
+  document.getElementById("dca-shares").value = "";
+  renderAll();
+  save();
+  const r = result.row;
+  const label = r.name || r.ticker || name;
+  setStatus(`月供已記錄，並更新持股「${label}」：股數 ${fmt(r.shares,4)}，平均成本 ${fmt(r.cost,4)}`,"ok");
 };
 
 load(); renderAll();
