@@ -63,13 +63,16 @@
       <button type="button" class="manual-btn" id="btn-add-manual">＋ 固定收益</button>
       <button type="button" class="secondary" id="btn-add-hk" style="border-color:#f59e0b;color:#fbbf24">＋ 港股手動</button>
       <button type="button" class="secondary" id="btn-save">💾 儲存</button>
+      <button type="button" class="secondary" id="btn-export">📤 匯出</button>
+      <button type="button" class="secondary" id="btn-import">📥 匯入</button>
+      <input type="file" id="import-file" accept=".json,application/json" style="display:none" />
       <button type="button" class="danger" id="btn-clear">清除全部</button>
     </div>
   </header>
 
   <div class="hint">
-    <strong>功能：</strong>① 持股與全年收息／總息率　② 每月派息預估（依派息頻率）　③ 月供記錄與加總<br>
-    美股可自動更新；港股請用「港股手動」。摘要一律換算 <strong>HKD</strong>。
+    <strong>功能：</strong>① 持股與全年收息／總息率　② 每月派息預估　③ 月供記錄與加總　④ <strong>匯出／匯入</strong>（可換手機／電腦使用）<br>
+    美股可自動更新；港股請用「港股手動」。摘要一律換算 <strong>HKD</strong>。資料存在本機瀏覽器，換裝置請先「匯出」再於新裝置「匯入」。
   </div>
 
   <div class="fx-bar">
@@ -538,6 +541,87 @@ document.getElementById("btn-dca-add").onclick=()=>{
   const r = result.row;
   const label = r.name || r.ticker || name;
   setStatus(`月供已記錄，並更新持股「${label}」：股數 ${fmt(r.shares,4)}，平均成本 ${fmt(r.cost,4)}`,"ok");
+};
+
+function exportData(){
+  const payload = {
+    version: 4,
+    exported_at: new Date().toISOString(),
+    fxRate: fxRate,
+    holdings: rows,
+    dca: dcaList,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `股息組合備份_${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  setStatus("已匯出備份檔，請妥善保存後於另一裝置「匯入」","ok");
+}
+
+function importDataFromObject(data){
+  if(!data || typeof data !== "object"){
+    setStatus("匯入失敗：檔案格式不正確","err");
+    return false;
+  }
+  const holdings = data.holdings || data.rows;
+  const dca = data.dca || data.dcaList;
+  if(!Array.isArray(holdings)){
+    setStatus("匯入失敗：找不到持股資料 (holdings)","err");
+    return false;
+  }
+  if(!confirm("匯入會覆蓋目前此裝置上的持股與月供資料，確定繼續？")){
+    setStatus("已取消匯入","err");
+    return false;
+  }
+  rows = holdings.map(r => {
+    const x = { ...r };
+    if(!x.type) x.type = "stock";
+    if(!x.currency) x.currency = (x.type==="hk"||x.type==="manual") ? "HKD" : "USD";
+    else x.currency = String(x.currency).trim().toUpperCase();
+    if(!x.freq) x.freq = "quarterly";
+    return x;
+  });
+  dcaList = Array.isArray(dca) ? dca.map(item => ({
+    ...item,
+    currency: String(item.currency||"HKD").trim().toUpperCase(),
+    amount: num(item.amount),
+    shares: item.shares==null||item.shares==="" ? null : num(item.shares),
+  })) : [];
+  if(data.fxRate != null && !isNaN(parseFloat(data.fxRate))){
+    fxRate = parseFloat(data.fxRate) || 7.8;
+    document.getElementById("fx-rate").value = fxRate;
+  }
+  save();
+  renderAll();
+  setStatus(`匯入成功：持股 ${rows.length} 筆、月供 ${dcaList.length} 筆`,"ok");
+  return true;
+}
+
+document.getElementById("btn-export").onclick = exportData;
+document.getElementById("btn-import").onclick = () => {
+  document.getElementById("import-file").value = "";
+  document.getElementById("import-file").click();
+};
+document.getElementById("import-file").onchange = (e) => {
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      importDataFromObject(data);
+    } catch (err) {
+      setStatus("匯入失敗：無法解析 JSON（"+err.message+"）","err");
+    }
+  };
+  reader.onerror = () => setStatus("讀取檔案失敗","err");
+  reader.readAsText(file, "utf-8");
 };
 
 load(); renderAll();
