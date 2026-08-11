@@ -75,7 +75,7 @@
   </header>
 
   <div class="hint">
-    <strong>資產類型：</strong>股票／ETF／債券／定期 — 可選，用於配置比例與圓形圖。<br>
+    <strong>資產類型：</strong>股票／ETF／REITs／債券／定期 — 可選，用於配置比例與圓形圖。<br>
     美股個股可自動更新；ETF／港股／債券／定期請手動填現價與年息。換裝置請「匯出」再「匯入」。
   </div>
 
@@ -180,6 +180,7 @@ const FX_KEY = "div_fx_v5";
 const ASSET_TYPES = [
   { id:"stock", label:"股票", color:"#3b82f6" },
   { id:"etf", label:"ETF", color:"#22c55e" },
+  { id:"reit", label:"REITs", color:"#ec4899" },
   { id:"bond", label:"債券", color:"#a78bfa" },
   { id:"deposit", label:"定期", color:"#f59e0b" },
 ];
@@ -215,7 +216,7 @@ function normalizeType(t){
   // 相容舊版
   if(!t || t==="hk") return "stock";
   if(t==="manual") return "deposit";
-  if(["stock","etf","bond","deposit"].includes(t)) return t;
+  if(["stock","etf","reit","bond","deposit"].includes(t)) return t;
   return "stock";
 }
 function isTotalMode(type){
@@ -273,7 +274,7 @@ function setStatus(msg,type=""){ const el=document.getElementById("status"); el.
 
 /* ---- 資產配置 + 圓形圖 ---- */
 function renderAllocation(){
-  const sums = { stock:0, etf:0, bond:0, deposit:0 };
+  const sums = { stock:0, etf:0, reit:0, bond:0, deposit:0 };
   rows.forEach(r=>{
     const c = calcRow(r);
     const t = c.type;
@@ -383,8 +384,8 @@ function renderHoldings(){
       ${ASSET_TYPES.map(t=>`<option value="${t.id}" ${type===t.id?"selected":""}>${t.label}</option>`).join("")}
     </select>`;
     // 股票/ETF 可用 ticker；債券/定期用名稱；港股可用名稱
-    const nameCell = (type==="stock"||type==="etf")
-      ? `<input class="ticker" type="text" value="${esc(r.ticker||r.name||"")}" data-i="${i}" data-f="ticker" placeholder="AAPL" title="美股可填 Ticker 自動更新" />`
+    const nameCell = (type==="stock"||type==="etf"||type==="reit")
+      ? `<input class="ticker" type="text" value="${esc(r.ticker||r.name||"")}" data-i="${i}" data-f="ticker" placeholder="AAPL / O / VNQ" title="美股／REITs 可填 Ticker 自動更新" />`
       : `<input class="name-input" type="text" value="${esc(r.name||r.ticker||"")}" data-i="${i}" data-f="name" placeholder="名稱" />`;
 
     // 現價/年息：非純自動美股都可編輯；有 ticker 的股票仍顯示可編輯以支援手動
@@ -487,7 +488,7 @@ async function updateQuotes(){
   // 僅更新「股票」且有美股風格 ticker 的列
   const tickers=rows.filter(r=>{
     const t=normalizeType(r.type);
-    if(t!=="stock"&&t!=="etf") return false;
+    if(t!=="stock"&&t!=="etf"&&t!=="reit") return false;
     const tk=(r.ticker||"").trim();
     return /^[A-Z][A-Z0-9.\-]{0,11}$/i.test(tk);
   }).map(r=>(r.ticker||"").trim().toUpperCase());
@@ -501,7 +502,7 @@ async function updateQuotes(){
     const map={}; (data.results||[]).forEach(r=>map[r.ticker]=r);
     rows.forEach(r=>{
       const t=normalizeType(r.type);
-      if(t!=="stock"&&t!=="etf") return;
+      if(t!=="stock"&&t!=="etf"&&t!=="reit") return;
       const d=map[(r.ticker||"").toUpperCase()];
       if(!d||d.error) return;
       if(d.name) r.name=d.name;
