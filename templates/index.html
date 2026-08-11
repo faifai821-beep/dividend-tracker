@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
   <title>股息／資產配置追蹤</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
@@ -11,22 +11,31 @@
       --accent:#3b82f6; --green:#22c55e; --red:#ef4444; --yellow:#eab308; --input:#0d1117;
     }
     *{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:100%;overflow-x:hidden}
     body{font-family:"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
-    .container{max-width:1400px;margin:0 auto;padding:20px 14px}
-    header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
-    h1{font-size:1.35rem;font-weight:700} h1 span{color:var(--accent)}
+    .container{max-width:1400px;width:100%;margin:0 auto;padding:16px 12px}
+    header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;width:100%}
+    h1{font-size:1.25rem;font-weight:700} h1 span{color:var(--accent)}
     h2{font-size:1.05rem;margin:18px 0 10px;color:#93c5fd}
-    .header-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .header-actions{display:flex;gap:6px;flex-wrap:wrap;width:100%}
+    @media(max-width:600px){
+      h1{font-size:1.1rem}
+      button{padding:7px 10px;font-size:.8rem}
+    }
     button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:.86rem;font-weight:600;cursor:pointer}
     button:hover{filter:brightness(1.1)} button:disabled{opacity:.5}
     button.secondary{background:transparent;border:1px solid var(--border);color:var(--text)}
     button.danger{background:#b91c1c} button.manual-btn{background:#6d28d9}
-    .hint{background:#1e293b;border-left:3px solid var(--accent);padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:14px;font-size:.84rem;color:var(--muted)}
+    .hint{background:#1e293b;border-left:3px solid var(--accent);padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:14px;font-size:.84rem;color:var(--muted);width:100%}
     .hint strong{color:var(--text)}
     .fx-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.9rem}
     .fx-bar input{background:var(--input);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;width:72px;text-align:center;font-weight:600}
-    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;width:100%}
+    @media(max-width:600px){
+      .summary{grid-template-columns:1fr 1fr}
+      .card .value{font-size:1rem}
+    }
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;width:100%;max-width:100%}
     .card .label{font-size:.75rem;color:var(--muted)} .card .value{font-size:1.1rem;font-weight:700}
     .card .unit{font-size:.7rem;color:var(--muted)} .value.green{color:var(--green)} .value.red{color:var(--red)} .value.blue{color:#60a5fa}
     .alloc-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
@@ -38,11 +47,12 @@
     .chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:center}
     .chart-box{position:relative;width:280px;max-width:100%;aspect-ratio:1/1;margin:8px auto}
     .chart-box canvas{width:100%!important;height:100%!important}
-    .alloc-table{width:100%;border-collapse:collapse;font-size:.88rem}
-    .alloc-table th,.alloc-table td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left}
+    .alloc-table{width:100%;border-collapse:collapse;font-size:.88rem;min-width:0}
+    .alloc-table th,.alloc-table td{padding:8px 8px;border-bottom:1px solid var(--border);text-align:left}
     .alloc-table th{color:var(--muted);font-size:.75rem}
-    .alloc-table td.pct{font-weight:700;color:#93c5fd;text-align:right;white-space:nowrap}
-    .alloc-table td.amt{text-align:right;font-variant-numeric:tabular-nums}
+    .alloc-table td.pct{font-weight:700;color:#93c5fd;text-align:right;white-space:nowrap;width:4.5rem}
+    .alloc-table td.amt{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .alloc-table col.pct-col{width:4.5rem}
     .alloc-bar{height:6px;border-radius:3px;background:#15202b;margin-top:4px;overflow:hidden}
     .alloc-bar > i{display:block;height:100%;border-radius:3px}
     .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
@@ -50,8 +60,12 @@
     .tabs button{background:#15202b;border:1px solid var(--border)}
     .tabs button.active{background:var(--accent);border-color:var(--accent)}
     .panel{display:none} .panel.active{display:block}
-    .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow-x:auto;margin-bottom:14px}
-    table{width:100%;border-collapse:collapse;min-width:960px}
+    .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:14px;width:100%;max-width:100%}
+    table{width:100%;border-collapse:collapse;min-width:720px}
+    @media(max-width:600px){
+      table{min-width:640px;font-size:.8rem}
+      th,td{padding:6px 6px}
+    }
     th,td{padding:7px 8px;text-align:center;border-bottom:1px solid var(--border);font-size:.84rem;white-space:nowrap}
     th{background:#15202b;color:var(--muted);font-size:.72rem;text-transform:uppercase}
     tr:hover td{background:rgba(59,130,246,.06)}
@@ -137,7 +151,7 @@
         <thead>
           <tr>
             <th>類型</th><th>名稱／Ticker</th><th>幣別</th><th>股數／單位</th><th>成本</th><th>現價／現值</th>
-            <th>市值(HKD)</th><th>年息</th><th>全年收息(HKD)</th>
+            <th>市值(HKD)</th><th>權重</th><th>年息</th><th>全年收息(HKD)</th>
             <th>派息頻率</th><th>成本息率</th><th>市值息率</th><th></th>
           </tr>
         </thead>
@@ -452,6 +466,7 @@ function renderHoldings(){
       <td><input type="number" value="${r.cost??""}" data-i="${i}" data-f="cost" min="0" step="0.01" placeholder="${totalMode?"本金":"每股成本"}" /></td>
       <td>${priceCell}</td>
       <td>${c.mvHkd?fmt(c.mvHkd):"—"}</td>
+      <td>${tm>0&&c.mvHkd?fmtPct(c.mvHkd/tm):"—"}</td>
       <td>${annualCell}</td>
       <td>${c.divHkd?fmt(c.divHkd):"—"}</td>
       <td><select data-i="${i}" data-f="freq">
