@@ -30,12 +30,21 @@
     .card .label{font-size:.75rem;color:var(--muted)} .card .value{font-size:1.1rem;font-weight:700}
     .card .unit{font-size:.7rem;color:var(--muted)} .value.green{color:var(--green)} .value.red{color:var(--red)} .value.blue{color:#60a5fa}
     .alloc-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-    @media(max-width:800px){.alloc-row{grid-template-columns:1fr}}
-    .chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:center;min-height:280px}
-    .chart-wrap canvas{max-width:280px;max-height:280px}
+    @media(max-width:800px){
+      .alloc-row{grid-template-columns:1fr}
+      .chart-wrap{padding:12px 8px 20px}
+      .chart-box{width:min(100%,320px)!important;max-width:100%}
+    }
+    .chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:center}
+    .chart-box{position:relative;width:280px;max-width:100%;aspect-ratio:1/1;margin:8px auto}
+    .chart-box canvas{width:100%!important;height:100%!important}
     .alloc-table{width:100%;border-collapse:collapse;font-size:.88rem}
     .alloc-table th,.alloc-table td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left}
     .alloc-table th{color:var(--muted);font-size:.75rem}
+    .alloc-table td.pct{font-weight:700;color:#93c5fd;text-align:right;white-space:nowrap}
+    .alloc-table td.amt{text-align:right;font-variant-numeric:tabular-nums}
+    .alloc-bar{height:6px;border-radius:3px;background:#15202b;margin-top:4px;overflow:hidden}
+    .alloc-bar > i{display:block;height:100%;border-radius:3px}
     .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
     .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
     .tabs button{background:#15202b;border:1px solid var(--border)}
@@ -107,8 +116,11 @@
     </div>
     <div class="chart-wrap">
       <h2 style="margin-top:0;align-self:flex-start">總資產圓形圖</h2>
-      <canvas id="pie-chart" width="260" height="260"></canvas>
+      <div class="chart-box">
+        <canvas id="pie-chart"></canvas>
+      </div>
       <p class="muted" id="pie-empty" style="display:none;margin-top:12px">尚無資產資料</p>
+      <p class="muted" style="font-size:.75rem;margin-top:8px;text-align:center">比例與上方表格一致（依市值 HKD）</p>
     </div>
   </div>
 
@@ -280,55 +292,95 @@ function renderAllocation(){
     const t = c.type;
     if(sums[t] != null) sums[t] += c.mvHkd;
   });
-  const total = Object.values(sums).reduce((a,b)=>a+b,0);
+  // 避免浮點誤差，合計用加總
+  const total = ASSET_TYPES.reduce((s,t)=>s+(sums[t.id]||0), 0);
   const tbody = document.querySelector("#alloc-table tbody");
   tbody.innerHTML = "";
-  const labels=[], data=[], colors=[];
+  const labels=[], data=[], colors=[], pctLabels=[];
+
   ASSET_TYPES.forEach(t=>{
-    const v = sums[t.id];
-    const pct = total>0 ? v/total : 0;
+    const v = sums[t.id] || 0;
+    const pct = total > 0 ? (v / total) : 0;
+    const pctStr = total > 0 ? (pct * 100).toFixed(1) + "%" : "—";
     tbody.innerHTML += `<tr>
-      <td><span class="dot" style="background:${t.color}"></span>${t.label}</td>
-      <td>${v?fmt(v):"—"}</td>
-      <td>${total?fmtPct(pct):"—"}</td>
+      <td>
+        <span class="dot" style="background:${t.color}"></span>${t.label}
+        <div class="alloc-bar"><i style="width:${(pct*100).toFixed(2)}%;background:${t.color}"></i></div>
+      </td>
+      <td class="amt">${v > 0 ? fmt(v) : "—"}</td>
+      <td class="pct">${pctStr}</td>
     </tr>`;
-    if(v > 0){
+    if(v > 0.005){  // 略過極小值避免圖表失真
       labels.push(t.label);
-      data.push(Math.round(v*100)/100);
+      data.push(Number(v.toFixed(2)));
       colors.push(t.color);
+      pctLabels.push(pctStr);
     }
   });
+
   tbody.innerHTML += `<tr style="font-weight:700">
-    <td>合計</td><td>${total?fmt(total):"—"}</td><td>${total?"100%":"—"}</td>
+    <td>合計</td>
+    <td class="amt">${total > 0 ? fmt(total) : "—"}</td>
+    <td class="pct">${total > 0 ? "100%" : "—"}</td>
   </tr>`;
 
   const empty = document.getElementById("pie-empty");
   const canvas = document.getElementById("pie-chart");
-  if(!total || data.length===0){
-    empty.style.display="block";
-    canvas.style.display="none";
-    if(pieChart){ pieChart.destroy(); pieChart=null; }
+  if(!total || data.length === 0){
+    empty.style.display = "block";
+    canvas.style.display = "none";
+    if(pieChart){ pieChart.destroy(); pieChart = null; }
     return;
   }
-  empty.style.display="none";
-  canvas.style.display="block";
+  empty.style.display = "none";
+  canvas.style.display = "block";
   if(pieChart) pieChart.destroy();
+
+  const dataSum = data.reduce((a,b)=>a+b, 0);
   pieChart = new Chart(canvas.getContext("2d"), {
-    type: "pie",
+    type: "doughnut",
     data: {
-      labels,
-      datasets: [{ data, backgroundColor: colors, borderColor:"#1a2332", borderWidth:2 }]
+      labels: labels.map((lb,i)=> `${lb} ${pctLabels[i]}`),
+      datasets: [{
+        data,
+        backgroundColor: colors,
+        borderColor: "#0f1419",
+        borderWidth: 2,
+        hoverOffset: 6
+      }]
     },
     options: {
       responsive: true,
+      maintainAspectRatio: true,
+      aspectRatio: 1,
+      layout: { padding: 4 },
       plugins: {
-        legend: { position:"bottom", labels:{ color:"#e7ecf3", padding:12 } },
+        legend: {
+          position: "bottom",
+          labels: {
+            color: "#e7ecf3",
+            padding: 10,
+            boxWidth: 12,
+            font: { size: 12 },
+            generateLabels(chart) {
+              const ds = chart.data.datasets[0];
+              return chart.data.labels.map((label, i) => ({
+                text: label,
+                fillStyle: ds.backgroundColor[i],
+                strokeStyle: "#0f1419",
+                lineWidth: 1,
+                hidden: false,
+                index: i
+              }));
+            }
+          }
+        },
         tooltip: {
           callbacks: {
-            label: (ctx) => {
-              const v = ctx.raw||0;
-              const p = total>0 ? (v/total*100).toFixed(1) : 0;
-              return ` ${ctx.label}: ${Number(v).toLocaleString()} HKD (${p}%)`;
+            label(ctx) {
+              const v = Number(ctx.raw) || 0;
+              const p = dataSum > 0 ? (v / dataSum * 100).toFixed(1) : "0";
+              return ` ${labels[ctx.dataIndex]}: ${v.toLocaleString("en-US",{maximumFractionDigits:2})} HKD (${p}%)`;
             }
           }
         }
