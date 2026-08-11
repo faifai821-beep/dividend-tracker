@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>股息／月供投資組合</title>
+  <title>股息／資產配置追蹤</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     :root {
       --bg:#0f1419; --card:#1a2332; --border:#2d3a4f; --text:#e7ecf3; --muted:#8b9bb4;
@@ -14,7 +15,7 @@
     .container{max-width:1400px;margin:0 auto;padding:20px 14px}
     header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
     h1{font-size:1.35rem;font-weight:700} h1 span{color:var(--accent)}
-    h2{font-size:1.05rem;margin:20px 0 10px;color:#93c5fd}
+    h2{font-size:1.05rem;margin:18px 0 10px;color:#93c5fd}
     .header-actions{display:flex;gap:8px;flex-wrap:wrap}
     button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:.86rem;font-weight:600;cursor:pointer}
     button:hover{filter:brightness(1.1)} button:disabled{opacity:.5}
@@ -24,31 +25,36 @@
     .hint strong{color:var(--text)}
     .fx-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.9rem}
     .fx-bar input{background:var(--input);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;width:72px;text-align:center;font-weight:600}
-    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
-    .card .label{font-size:.75rem;color:var(--muted)} .card .value{font-size:1.15rem;font-weight:700}
+    .card .label{font-size:.75rem;color:var(--muted)} .card .value{font-size:1.1rem;font-weight:700}
     .card .unit{font-size:.7rem;color:var(--muted)} .value.green{color:var(--green)} .value.red{color:var(--red)} .value.blue{color:#60a5fa}
+    .alloc-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+    @media(max-width:800px){.alloc-row{grid-template-columns:1fr}}
+    .chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:center;min-height:280px}
+    .chart-wrap canvas{max-width:280px;max-height:280px}
+    .alloc-table{width:100%;border-collapse:collapse;font-size:.88rem}
+    .alloc-table th,.alloc-table td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left}
+    .alloc-table th{color:var(--muted);font-size:.75rem}
+    .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
     .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
     .tabs button{background:#15202b;border:1px solid var(--border)}
     .tabs button.active{background:var(--accent);border-color:var(--accent)}
     .panel{display:none} .panel.active{display:block}
     .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow-x:auto;margin-bottom:14px}
-    table{width:100%;border-collapse:collapse;min-width:900px}
+    table{width:100%;border-collapse:collapse;min-width:960px}
     th,td{padding:7px 8px;text-align:center;border-bottom:1px solid var(--border);font-size:.84rem;white-space:nowrap}
     th{background:#15202b;color:var(--muted);font-size:.72rem;text-transform:uppercase}
     tr:hover td{background:rgba(59,130,246,.06)}
-    tr.manual-row td{background:rgba(167,139,250,.06)} tr.hk-row td{background:rgba(245,158,11,.06)}
     input,select{background:var(--input);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 6px;max-width:100px;font-size:.84rem;text-align:center}
     input.name-input{max-width:120px;text-align:left} input.ticker{max-width:90px;font-weight:600;color:#93c5fd}
-    .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:.7rem;font-weight:600}
-    .badge-stock{background:#1e3a5f;color:#93c5fd} .badge-manual{background:#4c1d95;color:#c4b5fd} .badge-hk{background:#78350f;color:#fcd34d}
+    select.type-sel{max-width:88px;font-weight:600}
     .status{font-size:.84rem;color:var(--muted);margin:8px 0} .status.ok{color:var(--green)} .status.err{color:var(--red)} .status.loading{color:var(--yellow)}
-    .month-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:16px}
-    .month-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-height:90px}
-    .month-card h3{font-size:.85rem;color:#93c5fd;margin-bottom:6px}
-    .month-card .amt{font-weight:700;color:var(--green);font-size:1rem}
+    .month-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:16px}
+    .month-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-height:80px}
+    .month-card h3{font-size:.85rem;color:#93c5fd;margin-bottom:4px}
+    .month-card .amt{font-weight:700;color:var(--green)}
     .month-card ul{list-style:none;font-size:.78rem;color:var(--muted);margin-top:4px}
-    .month-card ul li{margin:2px 0}
     footer{margin-top:20px;padding-top:12px;border-top:1px solid var(--border);font-size:.78rem;color:var(--muted);text-align:center}
     .muted{color:var(--muted);font-size:.8rem}
   </style>
@@ -56,12 +62,10 @@
 <body>
 <div class="container">
   <header>
-    <h1>📈 股息／月供<span>投資組合</span></h1>
+    <h1>📈 股息／資產<span>配置追蹤</span></h1>
     <div class="header-actions">
       <button type="button" id="btn-update">🔄 更新股價與派息</button>
-      <button type="button" class="secondary" id="btn-add">＋ 股票/ETF</button>
-      <button type="button" class="manual-btn" id="btn-add-manual">＋ 固定收益</button>
-      <button type="button" class="secondary" id="btn-add-hk" style="border-color:#f59e0b;color:#fbbf24">＋ 港股手動</button>
+      <button type="button" class="secondary" id="btn-add">＋ 新增</button>
       <button type="button" class="secondary" id="btn-save">💾 儲存</button>
       <button type="button" class="secondary" id="btn-export">📤 匯出</button>
       <button type="button" class="secondary" id="btn-import">📥 匯入</button>
@@ -71,26 +75,41 @@
   </header>
 
   <div class="hint">
-    <strong>功能：</strong>① 持股與全年收息／總息率　② 每月派息預估　③ 月供記錄與加總　④ <strong>匯出／匯入</strong>（可換手機／電腦使用）<br>
-    美股可自動更新；港股請用「港股手動」。摘要一律換算 <strong>HKD</strong>。資料存在本機瀏覽器，換裝置請先「匯出」再於新裝置「匯入」。
+    <strong>資產類型：</strong>股票／ETF／債券／定期 — 可選，用於配置比例與圓形圖。<br>
+    美股個股可自動更新；ETF／港股／債券／定期請手動填現價與年息。換裝置請「匯出」再「匯入」。
   </div>
 
   <div class="fx-bar">
     <label>匯率：1 USD =</label>
     <input type="number" id="fx-rate" value="7.8" min="0.01" step="0.01" />
     <span>HKD</span>
-    <span class="muted">（修改後總計即時重算）</span>
+    <span class="muted">（摘要與圖表一律以港元計算）</span>
   </div>
 
-  <!-- 核心摘要：全年收息 + 總息率 -->
   <div class="summary">
     <div class="card"><div class="label">總投資成本</div><div class="value" id="s-cost">—</div><div class="unit">HKD</div></div>
-    <div class="card"><div class="label">總市值</div><div class="value blue" id="s-mv">—</div><div class="unit">HKD</div></div>
+    <div class="card"><div class="label">總市值／總資產</div><div class="value blue" id="s-mv">—</div><div class="unit">HKD</div></div>
     <div class="card"><div class="label">全年預估收息</div><div class="value green" id="s-div">—</div><div class="unit">HKD／年</div></div>
     <div class="card"><div class="label">組合成本息率</div><div class="value" id="s-yc">—</div></div>
     <div class="card"><div class="label">組合市值息率</div><div class="value" id="s-ym">—</div></div>
     <div class="card"><div class="label">未實現損益</div><div class="value" id="s-pnl">—</div><div class="unit">HKD</div></div>
     <div class="card"><div class="label">本年累計月供</div><div class="value blue" id="s-dca">—</div><div class="unit">HKD</div></div>
+  </div>
+
+  <!-- 資產配置 + 圓形圖 -->
+  <div class="alloc-row">
+    <div class="card">
+      <h2 style="margin-top:0">資產配置比例（依市值）</h2>
+      <table class="alloc-table" id="alloc-table">
+        <thead><tr><th>類型</th><th>市值 (HKD)</th><th>佔比</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="chart-wrap">
+      <h2 style="margin-top:0;align-self:flex-start">總資產圓形圖</h2>
+      <canvas id="pie-chart" width="260" height="260"></canvas>
+      <p class="muted" id="pie-empty" style="display:none;margin-top:12px">尚無資產資料</p>
+    </div>
   </div>
 
   <div class="tabs">
@@ -100,45 +119,41 @@
   </div>
   <div class="status" id="status">就緒</div>
 
-  <!-- 持股 -->
   <div class="panel active" id="panel-holdings">
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>類型</th><th>名稱／Ticker</th><th>幣別</th><th>股數</th><th>成本</th><th>現價</th>
-            <th>市值(HKD)</th><th>每股年息<br>或年息</th><th>全年收息(HKD)</th>
+            <th>類型</th><th>名稱／Ticker</th><th>幣別</th><th>股數／單位</th><th>成本</th><th>現價／現值</th>
+            <th>市值(HKD)</th><th>年息</th><th>全年收息(HKD)</th>
             <th>派息頻率</th><th>成本息率</th><th>市值息率</th><th></th>
           </tr>
         </thead>
         <tbody id="tbody-holdings"></tbody>
       </table>
     </div>
-    <p class="muted">派息頻率用於「每月派息預估」：每月／每季／每半年／每年。港股與手動請自行設定。</p>
+    <p class="muted">類型選「股票」且填美股 Ticker 才會被「更新」自動抓價。債券／定期：成本＝本金、現價＝現值、年息＝每年利息總額。</p>
   </div>
 
-  <!-- 每月派息 -->
   <div class="panel" id="panel-calendar">
-    <h2>📅 每月預估派息（依頻率平均分攤全年收息）</h2>
-    <p class="muted" style="margin-bottom:10px">每季假設約在 3／6／9／12 月；每半年 6／12 月；每年 12 月。實際以公司公告為準。</p>
+    <h2>📅 每月預估派息</h2>
+    <p class="muted" style="margin-bottom:10px">依派息頻率分攤全年收息（預估）。</p>
     <div class="month-grid" id="month-grid"></div>
     <div class="card" style="max-width:280px">
-      <div class="label">十二個月合計（應約等於全年收息）</div>
+      <div class="label">十二個月合計</div>
       <div class="value green" id="s-month-total">—</div>
-      <div class="unit">HKD</div>
     </div>
   </div>
 
-  <!-- 月供 -->
   <div class="panel" id="panel-dca">
-    <h2>💵 月供股票記錄</h2>
-    <p class="muted" style="margin-bottom:8px">加入後會<strong>自動合併</strong>到持股明細：同名（Ticker／名稱）股數加總，並重算<strong>平均成本</strong>。建議填寫股數；名稱請與持股列一致（如 AAPL 或 匯豐 0005）。</p>
+    <h2>💵 月供記錄</h2>
+    <p class="muted" style="margin-bottom:8px">加入後會合併到同名持股（加總股數、重算平均成本）。</p>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
       <input type="month" id="dca-month" style="max-width:140px" />
-      <input type="text" id="dca-name" placeholder="名稱／Ticker（需與持股一致）" style="max-width:160px;text-align:left" />
+      <input type="text" id="dca-name" placeholder="名稱／Ticker" style="max-width:140px;text-align:left" />
       <select id="dca-cur" style="max-width:70px"><option value="HKD">HKD</option><option value="USD">USD</option></select>
       <input type="number" id="dca-amount" placeholder="投入金額" min="0" step="1" style="max-width:100px" />
-      <input type="number" id="dca-shares" placeholder="股數（建議填）" min="0" step="0.0001" style="max-width:110px" />
+      <input type="number" id="dca-shares" placeholder="股數" min="0" step="0.0001" style="max-width:100px" />
       <button type="button" id="btn-dca-add">＋ 加入月供</button>
     </div>
     <div class="summary" style="margin-bottom:12px">
@@ -154,27 +169,36 @@
     </div>
   </div>
 
-  <footer>全年收息與每月預估僅供參考｜實際派息以公司公告為準｜資料可存於瀏覽器本機</footer>
+  <footer>資產配置圖以市值(HKD)計算｜僅供參考｜資料存於瀏覽器本機</footer>
 </div>
 
 <script>
-const HOLD_KEY = "div_hold_v4";
-const DCA_KEY = "div_dca_v4";
-const FX_KEY = "div_fx_v4";
+const HOLD_KEY = "div_hold_v5";
+const DCA_KEY = "div_dca_v5";
+const FX_KEY = "div_fx_v5";
+
+const ASSET_TYPES = [
+  { id:"stock", label:"股票", color:"#3b82f6" },
+  { id:"etf", label:"ETF", color:"#22c55e" },
+  { id:"bond", label:"債券", color:"#a78bfa" },
+  { id:"deposit", label:"定期", color:"#f59e0b" },
+];
+const TYPE_MAP = Object.fromEntries(ASSET_TYPES.map(t => [t.id, t]));
 
 const DEFAULT_HOLD = [
   { type:"stock", ticker:"AAPL", shares:50, cost:180, currency:"USD", freq:"quarterly" },
   { type:"stock", ticker:"JNJ", shares:40, cost:155, currency:"USD", freq:"quarterly" },
-  { type:"hk", name:"示例 匯豐 0005", shares:2000, cost:55, price:162, annual_div:5.87, currency:"HKD", freq:"quarterly" },
-  { type:"manual", name:"示例定存", shares:1, cost:100000, price:100000, annual_div:3500, currency:"HKD", freq:"annual" },
+  { type:"etf", ticker:"SCHD", shares:30, cost:75, price:80, annual_div:2.8, currency:"USD", freq:"quarterly" },
+  { type:"stock", name:"示例 匯豐 0005", shares:2000, cost:55, price:162, annual_div:5.87, currency:"HKD", freq:"quarterly" },
+  { type:"deposit", name:"示例港元定存", shares:1, cost:100000, price:100000, annual_div:3500, currency:"HKD", freq:"annual" },
+  { type:"bond", name:"示例債券", shares:1, cost:50000, price:49000, annual_div:2000, currency:"HKD", freq:"semiannual" },
 ];
 
-let rows = [], dcaList = [], fxRate = 7.8;
+let rows = [], dcaList = [], fxRate = 7.8, pieChart = null;
 
 function num(v){
   if(v==null||v==="") return 0;
   if(typeof v === "number") return isNaN(v)?0:v;
-  // 去掉千分位逗號、空白、貨幣符號
   const s = String(v).replace(/[,，\s]|HKD|USD|\$|￥|元/gi,"");
   const n = parseFloat(s);
   return isNaN(n)?0:n;
@@ -185,27 +209,35 @@ function esc(s){ const d=document.createElement("div"); d.textContent=s==null?""
 function toHKD(a,c){
   if(a==null||isNaN(a)) return 0;
   const cur = String(c||"HKD").trim().toUpperCase();
-  if(cur === "USD") return a * fxRate;
-  // HKD 或其他：原樣（不乘匯率）
-  return a;
+  return cur === "USD" ? a * fxRate : a;
+}
+function normalizeType(t){
+  // 相容舊版
+  if(!t || t==="hk") return "stock";
+  if(t==="manual") return "deposit";
+  if(["stock","etf","bond","deposit"].includes(t)) return t;
+  return "stock";
+}
+function isTotalMode(type){
+  // 債券、定期：成本/現價/年息 視為「總額」
+  return type === "bond" || type === "deposit";
 }
 
 function load(){
   try{
     const fr=localStorage.getItem(FX_KEY); if(fr) fxRate=parseFloat(fr)||7.8;
     document.getElementById("fx-rate").value=fxRate;
-    const h=localStorage.getItem(HOLD_KEY);
-    if(h){ rows=JSON.parse(h); rows.forEach(r=>{
-      if(!r.type) r.type="stock";
-      if(!r.currency){
-        r.currency = (r.type==="hk"||r.type==="manual") ? "HKD" : "USD";
-      } else {
-        r.currency = String(r.currency).trim().toUpperCase();
-      }
-      if(!r.freq) r.freq="quarterly";
-    }); }
-    else rows=DEFAULT_HOLD.map(r=>({...r}));
-    const d=localStorage.getItem(DCA_KEY);
+    const h=localStorage.getItem(HOLD_KEY) || localStorage.getItem("div_hold_v4");
+    if(h){
+      rows=JSON.parse(h);
+      rows.forEach(r=>{
+        r.type = normalizeType(r.type);
+        if(!r.currency) r.currency = (r.type==="deposit"||r.type==="bond") ? "HKD" : "USD";
+        else r.currency = String(r.currency).trim().toUpperCase();
+        if(!r.freq) r.freq="quarterly";
+      });
+    } else rows=DEFAULT_HOLD.map(r=>({...r}));
+    const d=localStorage.getItem(DCA_KEY) || localStorage.getItem("div_dca_v4");
     if(d) dcaList=JSON.parse(d); else dcaList=[];
   }catch(e){ rows=DEFAULT_HOLD.map(r=>({...r})); dcaList=[]; }
   const now=new Date();
@@ -220,17 +252,18 @@ function save(){
 }
 
 function calcRow(r){
-  const isManual=r.type==="manual";
-  const shares=num(r.shares)||(isManual?1:0);
-  const cost=num(r.cost);
-  const price=isManual?(r.price!=null&&r.price!==""?num(r.price):cost):num(r.price);
-  const annual=num(r.annual_div);
-  const costBasis=isManual?cost:shares*cost;
-  const mv=isManual?price:shares*price;
-  const estDiv=isManual?annual:shares*annual;
-  const cur=(r.currency||"HKD").toUpperCase();
+  const type = normalizeType(r.type);
+  const totalMode = isTotalMode(type);
+  const shares = num(r.shares) || (totalMode ? 1 : 0);
+  const cost = num(r.cost);
+  const price = (r.price!=null && r.price!=="") ? num(r.price) : (totalMode ? cost : num(r.price));
+  const annual = num(r.annual_div);
+  const costBasis = totalMode ? cost : shares * cost;
+  const mv = totalMode ? (price || cost) : shares * price;
+  const estDiv = totalMode ? annual : shares * annual;
+  const cur = (r.currency||"HKD").toUpperCase();
   return {
-    costBasis, mv, estDiv,
+    costBasis, mv, estDiv, type,
     costHkd:toHKD(costBasis,cur), mvHkd:toHKD(mv,cur), divHkd:toHKD(estDiv,cur),
     yoc:costBasis>0?estDiv/costBasis:null, yom:mv>0?estDiv/mv:null
   };
@@ -238,29 +271,88 @@ function calcRow(r){
 
 function setStatus(msg,type=""){ const el=document.getElementById("status"); el.textContent=msg; el.className="status "+type; }
 
-/* ---- 每月派息：依頻率分攤 ---- */
+/* ---- 資產配置 + 圓形圖 ---- */
+function renderAllocation(){
+  const sums = { stock:0, etf:0, bond:0, deposit:0 };
+  rows.forEach(r=>{
+    const c = calcRow(r);
+    const t = c.type;
+    if(sums[t] != null) sums[t] += c.mvHkd;
+  });
+  const total = Object.values(sums).reduce((a,b)=>a+b,0);
+  const tbody = document.querySelector("#alloc-table tbody");
+  tbody.innerHTML = "";
+  const labels=[], data=[], colors=[];
+  ASSET_TYPES.forEach(t=>{
+    const v = sums[t.id];
+    const pct = total>0 ? v/total : 0;
+    tbody.innerHTML += `<tr>
+      <td><span class="dot" style="background:${t.color}"></span>${t.label}</td>
+      <td>${v?fmt(v):"—"}</td>
+      <td>${total?fmtPct(pct):"—"}</td>
+    </tr>`;
+    if(v > 0){
+      labels.push(t.label);
+      data.push(Math.round(v*100)/100);
+      colors.push(t.color);
+    }
+  });
+  tbody.innerHTML += `<tr style="font-weight:700">
+    <td>合計</td><td>${total?fmt(total):"—"}</td><td>${total?"100%":"—"}</td>
+  </tr>`;
+
+  const empty = document.getElementById("pie-empty");
+  const canvas = document.getElementById("pie-chart");
+  if(!total || data.length===0){
+    empty.style.display="block";
+    canvas.style.display="none";
+    if(pieChart){ pieChart.destroy(); pieChart=null; }
+    return;
+  }
+  empty.style.display="none";
+  canvas.style.display="block";
+  if(pieChart) pieChart.destroy();
+  pieChart = new Chart(canvas.getContext("2d"), {
+    type: "pie",
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors, borderColor:"#1a2332", borderWidth:2 }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position:"bottom", labels:{ color:"#e7ecf3", padding:12 } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.raw||0;
+              const p = total>0 ? (v/total*100).toFixed(1) : 0;
+              return ` ${ctx.label}: ${Number(v).toLocaleString()} HKD (${p}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+/* ---- 每月派息 ---- */
 const FREQ_MONTHS = {
-  monthly:   [1,2,3,4,5,6,7,8,9,10,11,12],
-  quarterly: [3,6,9,12],
+  monthly:[1,2,3,4,5,6,7,8,9,10,11,12],
+  quarterly:[3,6,9,12],
   semiannual:[6,12],
-  annual:    [12],
+  annual:[12],
 };
-function monthIncomeMap(){
+function renderCalendar(){
   const map={}; for(let m=1;m<=12;m++) map[m]=[];
   rows.forEach(r=>{
     const c=calcRow(r);
     if(!c.divHkd) return;
-    const freq=r.freq||"quarterly";
-    const months=FREQ_MONTHS[freq]||FREQ_MONTHS.quarterly;
+    const months=FREQ_MONTHS[r.freq||"quarterly"]||FREQ_MONTHS.quarterly;
     const per=c.divHkd/months.length;
     const label=r.name||r.ticker||"未命名";
     months.forEach(m=> map[m].push({ name:label, amount:per }));
   });
-  return map;
-}
-
-function renderCalendar(){
-  const map=monthIncomeMap();
   const names=["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
   const grid=document.getElementById("month-grid");
   grid.innerHTML="";
@@ -269,9 +361,8 @@ function renderCalendar(){
     const items=map[m];
     const sum=items.reduce((s,x)=>s+x.amount,0);
     total+=sum;
-    const ul=items.slice(0,6).map(x=>`<li>${esc(x.name)}：${fmt(x.amount)}</li>`).join("")
-      +(items.length>6?`<li>…共 ${items.length} 筆</li>`:"");
-    grid.innerHTML+=`<div class="month-card"><h3>${names[m]}</h3><div class="amt">${sum?fmt(sum):"—"}</div><ul>${ul||"<li class='muted'>無預估派息</li>"}</ul></div>`;
+    const ul=items.slice(0,5).map(x=>`<li>${esc(x.name)}：${fmt(x.amount)}</li>`).join("");
+    grid.innerHTML+=`<div class="month-card"><h3>${names[m]}</h3><div class="amt">${sum?fmt(sum):"—"}</div><ul>${ul||"<li class='muted'>—</li>"}</ul></div>`;
   }
   document.getElementById("s-month-total").textContent=total?fmt(total):"—";
 }
@@ -284,37 +375,37 @@ function renderHoldings(){
   rows.forEach(r=>{ const c=calcRow(r); tc+=c.costHkd; tm+=c.mvHkd; td+=c.divHkd; });
 
   rows.forEach((r,i)=>{
-    const isManual=r.type==="manual", isHk=r.type==="hk";
+    const type=normalizeType(r.type);
+    const totalMode=isTotalMode(type);
     const c=calcRow(r);
     const tr=document.createElement("tr");
-    if(isManual) tr.classList.add("manual-row");
-    if(isHk) tr.classList.add("hk-row");
-    const badge=isManual?`<span class="badge badge-manual">固定收益</span>`:isHk?`<span class="badge badge-hk">港股手動</span>`:`<span class="badge badge-stock">股票/ETF</span>`;
-    const nameCell=isManual||isHk
-      ?`<input class="name-input" type="text" value="${esc(r.name||"")}" data-i="${i}" data-f="name" placeholder="${isHk?"匯豐 0005":"名稱"}" />`
-      :`<input class="ticker" type="text" value="${esc(r.ticker||"")}" data-i="${i}" data-f="ticker" placeholder="AAPL" />`;
-    const priceCell=(isManual||isHk)
-      ?`<input type="number" value="${r.price??""}" data-i="${i}" data-f="price" min="0" step="0.01" />`
-      :(r.price!=null?fmt(r.price,2):"—");
-    const annualCell=(isManual||isHk)
-      ?`<input type="number" value="${r.annual_div??""}" data-i="${i}" data-f="annual_div" min="0" step="0.01" />`
-      :(r.annual_div!=null?fmt(r.annual_div,4):"—");
-    const freq=r.freq||"quarterly";
+    const typeSel = `<select class="type-sel" data-i="${i}" data-f="type">
+      ${ASSET_TYPES.map(t=>`<option value="${t.id}" ${type===t.id?"selected":""}>${t.label}</option>`).join("")}
+    </select>`;
+    // 股票/ETF 可用 ticker；債券/定期用名稱；港股可用名稱
+    const nameCell = (type==="stock"||type==="etf")
+      ? `<input class="ticker" type="text" value="${esc(r.ticker||r.name||"")}" data-i="${i}" data-f="ticker" placeholder="AAPL" title="美股可填 Ticker 自動更新" />`
+      : `<input class="name-input" type="text" value="${esc(r.name||r.ticker||"")}" data-i="${i}" data-f="name" placeholder="名稱" />`;
+
+    // 現價/年息：非純自動美股都可編輯；有 ticker 的股票仍顯示可編輯以支援手動
+    const priceCell = `<input type="number" value="${r.price??""}" data-i="${i}" data-f="price" min="0" step="0.01" placeholder="${totalMode?"現值":"現價"}" />`;
+    const annualCell = `<input type="number" value="${r.annual_div??""}" data-i="${i}" data-f="annual_div" min="0" step="0.01" placeholder="${totalMode?"年利息":"每股年息"}" />`;
+
     tr.innerHTML=`
-      <td>${badge}</td>
+      <td>${typeSel}</td>
       <td>${nameCell}</td>
       <td><select data-i="${i}" data-f="currency"><option value="HKD" ${r.currency==="HKD"?"selected":""}>HKD</option><option value="USD" ${r.currency==="USD"?"selected":""}>USD</option></select></td>
-      <td><input type="number" value="${r.shares??""}" data-i="${i}" data-f="shares" min="0" step="1" style="max-width:80px" /></td>
-      <td><input type="number" value="${r.cost??""}" data-i="${i}" data-f="cost" min="0" step="0.01" /></td>
+      <td><input type="number" value="${r.shares??(totalMode?1:"")}" data-i="${i}" data-f="shares" min="0" step="any" style="max-width:80px" /></td>
+      <td><input type="number" value="${r.cost??""}" data-i="${i}" data-f="cost" min="0" step="0.01" placeholder="${totalMode?"本金":"每股成本"}" /></td>
       <td>${priceCell}</td>
       <td>${c.mvHkd?fmt(c.mvHkd):"—"}</td>
       <td>${annualCell}</td>
       <td>${c.divHkd?fmt(c.divHkd):"—"}</td>
       <td><select data-i="${i}" data-f="freq">
-        <option value="monthly" ${freq==="monthly"?"selected":""}>每月</option>
-        <option value="quarterly" ${freq==="quarterly"?"selected":""}>每季</option>
-        <option value="semiannual" ${freq==="semiannual"?"selected":""}>每半年</option>
-        <option value="annual" ${freq==="annual"?"selected":""}>每年</option>
+        <option value="monthly" ${r.freq==="monthly"?"selected":""}>每月</option>
+        <option value="quarterly" ${(!r.freq||r.freq==="quarterly")?"selected":""}>每季</option>
+        <option value="semiannual" ${r.freq==="semiannual"?"selected":""}>每半年</option>
+        <option value="annual" ${r.freq==="annual"?"selected":""}>每年</option>
       </select></td>
       <td>${c.yoc!=null?fmtPct(c.yoc):"—"}</td>
       <td>${c.yom!=null?fmtPct(c.yom):"—"}</td>
@@ -343,8 +434,16 @@ function renderHoldings(){
 function onHoldChange(e){
   const i=+e.target.dataset.i, f=e.target.dataset.f;
   let v=e.target.value;
-  if(f==="ticker"){ v=v.trim().toUpperCase(); rows[i].ticker=v; rows[i].name=""; rows[i].price=null; rows[i].annual_div=null; }
-  else if(f==="name") rows[i].name=v.trim();
+  if(f==="ticker"){
+    v=v.trim().toUpperCase();
+    rows[i].ticker=v;
+    // 若像名稱（含中文或空白）也寫入 name
+    if(/[\u4e00-\u9fff\s]/.test(e.target.value)){ rows[i].name=e.target.value.trim(); rows[i].ticker=""; }
+  } else if(f==="name") rows[i].name=v.trim();
+  else if(f==="type"){
+    rows[i].type=v;
+    if((v==="bond"||v==="deposit") && !rows[i].currency) rows[i].currency="HKD";
+  }
   else if(f==="currency"||f==="freq") rows[i][f]=v;
   else if(["shares","cost","price","annual_div"].includes(f)) rows[i][f]=v===""?null:num(v);
   renderAll(); save();
@@ -358,13 +457,11 @@ function renderDca(){
   const thisMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
   const thisYear=String(now.getFullYear());
   let sumAll=0, sumM=0, sumY=0;
-
   const sorted=[...dcaList].sort((a,b)=>(b.month||"").localeCompare(a.month||""));
-  sorted.forEach((item,idx)=>{
-    const cur = String(item.currency||"HKD").trim().toUpperCase();
-    const amt = num(item.amount);
-    // HKD 原樣；USD 才乘匯率
-    const hkd = cur === "USD" ? amt * fxRate : amt;
+  sorted.forEach((item)=>{
+    const cur=String(item.currency||"HKD").trim().toUpperCase();
+    const amt=num(item.amount);
+    const hkd=cur==="USD"?amt*fxRate:amt;
     sumAll+=hkd;
     if(item.month===thisMonth) sumM+=hkd;
     if((item.month||"").startsWith(thisYear)) sumY+=hkd;
@@ -384,11 +481,17 @@ function renderDca(){
   document.getElementById("s-dca").textContent=sumY?fmt(sumY):"—";
 }
 
-function renderAll(){ renderHoldings(); renderCalendar(); renderDca(); }
+function renderAll(){ renderHoldings(); renderAllocation(); renderCalendar(); renderDca(); }
 
 async function updateQuotes(){
-  const tickers=rows.filter(r=>r.type==="stock"||!r.type).map(r=>(r.ticker||"").trim()).filter(Boolean);
-  if(!tickers.length){ setStatus("沒有可自動更新的股票/ETF","err"); return; }
+  // 僅更新「股票」且有美股風格 ticker 的列
+  const tickers=rows.filter(r=>{
+    const t=normalizeType(r.type);
+    if(t!=="stock"&&t!=="etf") return false;
+    const tk=(r.ticker||"").trim();
+    return /^[A-Z][A-Z0-9.\-]{0,11}$/i.test(tk);
+  }).map(r=>(r.ticker||"").trim().toUpperCase());
+  if(!tickers.length){ setStatus("沒有可自動更新的美股 Ticker（股票/ETF）","err"); return; }
   const btn=document.getElementById("btn-update"); btn.disabled=true;
   setStatus(`更新 ${tickers.length} 檔…`,"loading");
   try{
@@ -397,20 +500,22 @@ async function updateQuotes(){
     if(data.error&&(!data.results||!data.results.length)) throw new Error(data.error);
     const map={}; (data.results||[]).forEach(r=>map[r.ticker]=r);
     rows.forEach(r=>{
-      if(r.type==="manual"||r.type==="hk") return;
+      const t=normalizeType(r.type);
+      if(t!=="stock"&&t!=="etf") return;
       const d=map[(r.ticker||"").toUpperCase()];
       if(!d||d.error) return;
-      r.name=d.name; r.price=d.price; r.annual_div=d.annual_div;
+      if(d.name) r.name=d.name;
+      if(d.price!=null) r.price=d.price;
+      if(d.annual_div!=null) r.annual_div=d.annual_div;
       if(d.currency==="USD"||d.currency==="HKD") r.currency=d.currency;
     });
     renderAll(); save();
     const errs=(data.results||[]).filter(r=>r.error);
-    setStatus(errs.length?`部分失敗 ${errs.length} 檔`:`更新完成 · ${data.updated_at||""}`, errs.length?"err":"ok");
+    setStatus(errs.length?`部分失敗 ${errs.length} 檔（ETF 可能不支援）`:`更新完成 · ${data.updated_at||""}`, errs.length?"err":"ok");
   }catch(e){ setStatus("更新失敗："+e.message,"err"); }
   finally{ btn.disabled=false; }
 }
 
-// tabs
 document.querySelectorAll(".tabs button").forEach(btn=>{
   btn.onclick=()=>{
     document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
@@ -424,204 +529,124 @@ document.getElementById("fx-rate").onchange=e=>{
   fxRate=parseFloat(e.target.value)||7.8; if(fxRate<=0)fxRate=7.8; e.target.value=fxRate; renderAll(); save();
 };
 document.getElementById("btn-update").onclick=updateQuotes;
-document.getElementById("btn-add").onclick=()=>{ rows.push({type:"stock",ticker:"",shares:null,cost:null,currency:"USD",freq:"quarterly"}); renderAll(); };
-document.getElementById("btn-add-manual").onclick=()=>{ rows.push({type:"manual",name:"",shares:1,cost:null,price:null,annual_div:null,currency:"HKD",freq:"annual"}); renderAll(); };
-document.getElementById("btn-add-hk").onclick=()=>{ rows.push({type:"hk",name:"",shares:null,cost:null,price:null,annual_div:null,currency:"HKD",freq:"quarterly"}); renderAll(); };
+document.getElementById("btn-add").onclick=()=>{
+  rows.push({type:"stock",ticker:"",shares:null,cost:null,price:null,annual_div:null,currency:"USD",freq:"quarterly"});
+  renderAll();
+};
 document.getElementById("btn-save").onclick=save;
 document.getElementById("btn-clear").onclick=()=>{
   if(confirm("清除所有持股與月供記錄？")){ rows=[]; dcaList=[]; localStorage.removeItem(HOLD_KEY); localStorage.removeItem(DCA_KEY); renderAll(); setStatus("已清除","ok"); }
 };
-function normName(s){ return String(s||"").trim().toUpperCase().replace(/\s+/g," "); }
 
+function normName(s){ return String(s||"").trim().toUpperCase().replace(/\s+/g," "); }
 function findHoldingIndex(name){
-  const n = normName(name);
+  const n=normName(name);
   if(!n) return -1;
-  return rows.findIndex(r => {
-    const t = normName(r.ticker);
-    const nm = normName(r.name);
-    return (t && t === n) || (nm && nm === n) ||
-           (t && (n === t || n.includes(t) || t.includes(n))) ||
-           (nm && (n === nm || n.includes(nm) || nm.includes(n)));
+  return rows.findIndex(r=>{
+    const t=normName(r.ticker), nm=normName(r.name);
+    return (t&&t===n)||(nm&&nm===n)||(t&&(n.includes(t)||t.includes(n)))||(nm&&(n.includes(nm)||nm.includes(n)));
   });
 }
-
-function amountInHoldingCurrency(amount, dcaCur, holdCur){
-  const a = num(amount);
-  const dc = String(dcaCur||"HKD").trim().toUpperCase();
-  const hc = String(holdCur||"HKD").trim().toUpperCase();
-  if(dc === hc) return a;           // 同幣別：不轉換（含 HKD→HKD）
-  if(dc === "USD" && hc === "HKD") return a * fxRate;
-  if(dc === "HKD" && hc === "USD") return fxRate > 0 ? a / fxRate : a;
+function amountInHoldingCurrency(amount,dcaCur,holdCur){
+  const a=num(amount);
+  const dc=String(dcaCur||"HKD").trim().toUpperCase();
+  const hc=String(holdCur||"HKD").trim().toUpperCase();
+  if(dc===hc) return a;
+  if(dc==="USD"&&hc==="HKD") return a*fxRate;
+  if(dc==="HKD"&&hc==="USD") return fxRate>0?a/fxRate:a;
   return a;
 }
-
-/** 月供併入持股：加總股數、重算平均成本 */
-function mergeDcaIntoHolding(name, currency, amount, shares){
-  let idx = findHoldingIndex(name);
-  let addShares = (shares != null && shares > 0) ? shares : null;
-
-  // 無同名 → 新建
-  if(idx < 0){
-    if(!addShares){
-      setStatus("無同名持股，請填寫「股數」以建立新持股列","err");
-      return { ok:false };
-    }
-    const unitCost = amount / addShares;
-    const cur = (currency||"HKD").toUpperCase();
-    const looksLikeUsTicker = /^[A-Z]{1,5}$/.test(name.trim().toUpperCase());
-    const row = {
-      type: looksLikeUsTicker ? "stock" : (cur === "HKD" ? "hk" : "stock"),
-      ticker: looksLikeUsTicker ? name.trim().toUpperCase() : "",
-      name: looksLikeUsTicker ? "" : name.trim(),
-      shares: addShares,
-      cost: Math.round(unitCost * 10000) / 10000,
-      price: null,
-      annual_div: null,
-      currency: cur,
-      freq: "quarterly",
-    };
-    rows.push(row);
-    return { ok:true, created:true, row };
+function mergeDcaIntoHolding(name,currency,amount,shares){
+  let idx=findHoldingIndex(name);
+  let addShares=(shares!=null&&shares>0)?shares:null;
+  if(idx<0){
+    if(!addShares){ setStatus("無同名持股，請填股數以建立新列","err"); return {ok:false}; }
+    const unitCost=amount/addShares;
+    const cur=String(currency||"HKD").trim().toUpperCase();
+    const looksTicker=/^[A-Z]{1,5}$/.test(name.trim().toUpperCase());
+    rows.push({
+      type: looksTicker?"stock":"stock",
+      ticker: looksTicker?name.trim().toUpperCase():"",
+      name: looksTicker?"":name.trim(),
+      shares:addShares, cost:Math.round(unitCost*10000)/10000,
+      price:null, annual_div:null, currency:cur, freq:"quarterly"
+    });
+    return {ok:true, row:rows[rows.length-1]};
   }
-
-  const r = rows[idx];
-  // 正規化持股幣別
-  r.currency = String(r.currency||"HKD").trim().toUpperCase();
-  const oldShares = num(r.shares);
-  const oldCost = num(r.cost);
-  const amtInHold = amountInHoldingCurrency(amount, currency, r.currency);
-
-  // 固定收益（manual）：cost 為「總本金」，不是每股成本
-  if(r.type === "manual"){
-    r.cost = Math.round((oldCost + amtInHold) * 100) / 100;
-    if(r.price == null || r.price === "") r.price = r.cost;
-    else r.price = Math.round((num(r.price) + amtInHold) * 100) / 100;
-    if(addShares && addShares > 0) r.shares = Math.round((oldShares + addShares) * 10000) / 10000;
-    return { ok:true, created:false, row:r, addShares: addShares||0 };
+  const r=rows[idx];
+  r.currency=String(r.currency||"HKD").trim().toUpperCase();
+  const type=normalizeType(r.type);
+  const amtInHold=amountInHoldingCurrency(amount,currency,r.currency);
+  if(isTotalMode(type)){
+    r.cost=Math.round((num(r.cost)+amtInHold)*100)/100;
+    r.price=Math.round((num(r.price||r.cost)+amtInHold)*100)/100;
+    if(addShares) r.shares=Math.round((num(r.shares)+addShares)*10000)/10000;
+    return {ok:true, row:r};
   }
-
   if(!addShares){
-    const px = num(r.price);
-    if(px > 0){
-      addShares = amtInHold / px;
-    } else {
-      setStatus("請填寫股數（或先更新該股現價）","err");
-      return { ok:false };
-    }
+    const px=num(r.price);
+    if(px>0) addShares=amtInHold/px;
+    else { setStatus("請填寫股數","err"); return {ok:false}; }
   }
-
-  // 股票／港股：加總股數，重算每股平均成本
-  // 新平均成本 = (舊股數×舊成本 + 本次投入金額換算後) / 新股數
-  const newShares = oldShares + addShares;
-  const newAvg = newShares > 0 ? (oldShares * oldCost + amtInHold) / newShares : oldCost;
-  r.shares = Math.round(newShares * 10000) / 10000;
-  r.cost = Math.round(newAvg * 10000) / 10000;
-  return { ok:true, created:false, row:r, addShares };
+  const oldShares=num(r.shares), oldCost=num(r.cost);
+  const newShares=oldShares+addShares;
+  r.shares=Math.round(newShares*10000)/10000;
+  r.cost=Math.round(((oldShares*oldCost+amtInHold)/newShares)*10000)/10000;
+  return {ok:true, row:r};
 }
-
 document.getElementById("btn-dca-add").onclick=()=>{
   const month=document.getElementById("dca-month").value;
   const name=document.getElementById("dca-name").value.trim();
   const currency=document.getElementById("dca-cur").value;
   const amount=num(document.getElementById("dca-amount").value);
   const sharesVal=document.getElementById("dca-shares").value;
-  const shares = sharesVal === "" ? null : num(sharesVal);
-  if(!month || !name || !amount){ setStatus("請填年月、名稱、金額","err"); return; }
-
-  const result = mergeDcaIntoHolding(name, currency, amount, shares);
+  const shares=sharesVal===""?null:num(sharesVal);
+  if(!month||!name||!amount){ setStatus("請填年月、名稱、金額","err"); return; }
+  const result=mergeDcaIntoHolding(name,currency,amount,shares);
   if(!result.ok) return;
-
-  const curNorm = String(currency||"HKD").trim().toUpperCase();
-  dcaList.push({ month, name, currency: curNorm, amount, shares });
-  document.getElementById("dca-name").value = "";
-  document.getElementById("dca-amount").value = "";
-  document.getElementById("dca-shares").value = "";
-  renderAll();
-  save();
-  const r = result.row;
-  const label = r.name || r.ticker || name;
-  setStatus(`月供已記錄，並更新持股「${label}」：股數 ${fmt(r.shares,4)}，平均成本 ${fmt(r.cost,4)}`,"ok");
+  dcaList.push({month,name,currency:String(currency).toUpperCase(),amount,shares});
+  document.getElementById("dca-name").value="";
+  document.getElementById("dca-amount").value="";
+  document.getElementById("dca-shares").value="";
+  renderAll(); save();
+  const r=result.row;
+  setStatus(`月供已記錄並更新「${r.name||r.ticker}」股數 ${fmt(r.shares,4)} 成本 ${fmt(r.cost,4)}`,"ok");
 };
 
 function exportData(){
-  const payload = {
-    version: 4,
-    exported_at: new Date().toISOString(),
-    fxRate: fxRate,
-    holdings: rows,
-    dca: dcaList,
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const stamp = new Date().toISOString().slice(0,10);
-  a.href = url;
-  a.download = `股息組合備份_${stamp}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  const payload={ version:5, exported_at:new Date().toISOString(), fxRate, holdings:rows, dca:dcaList };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download=`股息組合備份_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  setStatus("已匯出備份檔，請妥善保存後於另一裝置「匯入」","ok");
+  setStatus("已匯出備份檔","ok");
 }
-
 function importDataFromObject(data){
-  if(!data || typeof data !== "object"){
-    setStatus("匯入失敗：檔案格式不正確","err");
-    return false;
-  }
-  const holdings = data.holdings || data.rows;
-  const dca = data.dca || data.dcaList;
-  if(!Array.isArray(holdings)){
-    setStatus("匯入失敗：找不到持股資料 (holdings)","err");
-    return false;
-  }
-  if(!confirm("匯入會覆蓋目前此裝置上的持股與月供資料，確定繼續？")){
-    setStatus("已取消匯入","err");
-    return false;
-  }
-  rows = holdings.map(r => {
-    const x = { ...r };
-    if(!x.type) x.type = "stock";
-    if(!x.currency) x.currency = (x.type==="hk"||x.type==="manual") ? "HKD" : "USD";
-    else x.currency = String(x.currency).trim().toUpperCase();
-    if(!x.freq) x.freq = "quarterly";
+  if(!data||typeof data!=="object"){ setStatus("檔案格式不正確","err"); return; }
+  const holdings=data.holdings||data.rows;
+  if(!Array.isArray(holdings)){ setStatus("找不到持股資料","err"); return; }
+  if(!confirm("匯入會覆蓋目前資料，確定？")) return;
+  rows=holdings.map(r=>{
+    const x={...r};
+    x.type=normalizeType(x.type);
+    x.currency=String(x.currency||"HKD").trim().toUpperCase();
+    if(!x.freq) x.freq="quarterly";
     return x;
   });
-  dcaList = Array.isArray(dca) ? dca.map(item => ({
-    ...item,
-    currency: String(item.currency||"HKD").trim().toUpperCase(),
-    amount: num(item.amount),
-    shares: item.shares==null||item.shares==="" ? null : num(item.shares),
-  })) : [];
-  if(data.fxRate != null && !isNaN(parseFloat(data.fxRate))){
-    fxRate = parseFloat(data.fxRate) || 7.8;
-    document.getElementById("fx-rate").value = fxRate;
-  }
-  save();
-  renderAll();
-  setStatus(`匯入成功：持股 ${rows.length} 筆、月供 ${dcaList.length} 筆`,"ok");
-  return true;
+  dcaList=Array.isArray(data.dca||data.dcaList)?(data.dca||data.dcaList):[];
+  if(data.fxRate!=null){ fxRate=parseFloat(data.fxRate)||7.8; document.getElementById("fx-rate").value=fxRate; }
+  save(); renderAll();
+  setStatus(`匯入成功：持股 ${rows.length}、月供 ${dcaList.length}`,"ok");
 }
-
-document.getElementById("btn-export").onclick = exportData;
-document.getElementById("btn-import").onclick = () => {
-  document.getElementById("import-file").value = "";
-  document.getElementById("import-file").click();
-};
-document.getElementById("import-file").onchange = (e) => {
-  const file = e.target.files && e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const data = JSON.parse(reader.result);
-      importDataFromObject(data);
-    } catch (err) {
-      setStatus("匯入失敗：無法解析 JSON（"+err.message+"）","err");
-    }
-  };
-  reader.onerror = () => setStatus("讀取檔案失敗","err");
-  reader.readAsText(file, "utf-8");
+document.getElementById("btn-export").onclick=exportData;
+document.getElementById("btn-import").onclick=()=>{ document.getElementById("import-file").value=""; document.getElementById("import-file").click(); };
+document.getElementById("import-file").onchange=e=>{
+  const file=e.target.files&&e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{ try{ importDataFromObject(JSON.parse(reader.result)); }catch(err){ setStatus("JSON 解析失敗","err"); } };
+  reader.readAsText(file,"utf-8");
 };
 
 load(); renderAll();
