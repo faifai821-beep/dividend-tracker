@@ -168,18 +168,39 @@ const DEFAULT_HOLD = [
 
 let rows = [], dcaList = [], fxRate = 7.8;
 
-function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
+function num(v){
+  if(v==null||v==="") return 0;
+  if(typeof v === "number") return isNaN(v)?0:v;
+  // 去掉千分位逗號、空白、貨幣符號
+  const s = String(v).replace(/[,，\s]|HKD|USD|\$|￥|元/gi,"");
+  const n = parseFloat(s);
+  return isNaN(n)?0:n;
+}
 function fmt(n,d=2){ if(n==null||n===""||isNaN(n))return "—"; return Number(n).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d}); }
 function fmtPct(n){ if(n==null||isNaN(n))return "—"; return (n*100).toFixed(2)+"%"; }
 function esc(s){ const d=document.createElement("div"); d.textContent=s==null?"":String(s); return d.innerHTML; }
-function toHKD(a,c){ if(a==null||isNaN(a))return 0; return (c||"HKD").toUpperCase()==="USD" ? a*fxRate : a; }
+function toHKD(a,c){
+  if(a==null||isNaN(a)) return 0;
+  const cur = String(c||"HKD").trim().toUpperCase();
+  if(cur === "USD") return a * fxRate;
+  // HKD 或其他：原樣（不乘匯率）
+  return a;
+}
 
 function load(){
   try{
     const fr=localStorage.getItem(FX_KEY); if(fr) fxRate=parseFloat(fr)||7.8;
     document.getElementById("fx-rate").value=fxRate;
     const h=localStorage.getItem(HOLD_KEY);
-    if(h){ rows=JSON.parse(h); rows.forEach(r=>{ if(!r.type)r.type="stock"; if(!r.currency)r.currency="USD"; if(!r.freq)r.freq="quarterly"; }); }
+    if(h){ rows=JSON.parse(h); rows.forEach(r=>{
+      if(!r.type) r.type="stock";
+      if(!r.currency){
+        r.currency = (r.type==="hk"||r.type==="manual") ? "HKD" : "USD";
+      } else {
+        r.currency = String(r.currency).trim().toUpperCase();
+      }
+      if(!r.freq) r.freq="quarterly";
+    }); }
     else rows=DEFAULT_HOLD.map(r=>({...r}));
     const d=localStorage.getItem(DCA_KEY);
     if(d) dcaList=JSON.parse(d); else dcaList=[];
@@ -337,14 +358,17 @@ function renderDca(){
 
   const sorted=[...dcaList].sort((a,b)=>(b.month||"").localeCompare(a.month||""));
   sorted.forEach((item,idx)=>{
-    const hkd=toHKD(num(item.amount), item.currency||"HKD");
+    const cur = String(item.currency||"HKD").trim().toUpperCase();
+    const amt = num(item.amount);
+    // HKD 原樣；USD 才乘匯率
+    const hkd = cur === "USD" ? amt * fxRate : amt;
     sumAll+=hkd;
     if(item.month===thisMonth) sumM+=hkd;
     if((item.month||"").startsWith(thisYear)) sumY+=hkd;
     const realIdx=dcaList.indexOf(item);
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${esc(item.month)}</td><td>${esc(item.name)}</td><td>${esc(item.currency||"HKD")}</td>
-      <td>${fmt(item.amount)}</td><td>${fmt(hkd)}</td><td>${item.shares!=null?fmt(item.shares,0):"—"}</td>
+    tr.innerHTML=`<td>${esc(item.month)}</td><td>${esc(item.name)}</td><td>${esc(cur)}</td>
+      <td>${fmt(amt)}</td><td>${fmt(hkd)}</td><td>${item.shares!=null&&item.shares!==""?fmt(item.shares,4):"—"}</td>
       <td><button type="button" class="secondary" style="padding:3px 7px;font-size:.75rem" data-dca-del="${realIdx}">刪</button></td>`;
     tbody.appendChild(tr);
   });
@@ -420,9 +444,9 @@ function findHoldingIndex(name){
 
 function amountInHoldingCurrency(amount, dcaCur, holdCur){
   const a = num(amount);
-  const dc = (dcaCur||"HKD").toUpperCase();
-  const hc = (holdCur||"HKD").toUpperCase();
-  if(dc === hc) return a;
+  const dc = String(dcaCur||"HKD").trim().toUpperCase();
+  const hc = String(holdCur||"HKD").trim().toUpperCase();
+  if(dc === hc) return a;           // 同幣別：不轉換（含 HKD→HKD）
   if(dc === "USD" && hc === "HKD") return a * fxRate;
   if(dc === "HKD" && hc === "USD") return fxRate > 0 ? a / fxRate : a;
   return a;
@@ -458,21 +482,33 @@ function mergeDcaIntoHolding(name, currency, amount, shares){
   }
 
   const r = rows[idx];
+  // 正規化持股幣別
+  r.currency = String(r.currency||"HKD").trim().toUpperCase();
   const oldShares = num(r.shares);
   const oldCost = num(r.cost);
+  const amtInHold = amountInHoldingCurrency(amount, currency, r.currency);
+
+  // 固定收益（manual）：cost 為「總本金」，不是每股成本
+  if(r.type === "manual"){
+    r.cost = Math.round((oldCost + amtInHold) * 100) / 100;
+    if(r.price == null || r.price === "") r.price = r.cost;
+    else r.price = Math.round((num(r.price) + amtInHold) * 100) / 100;
+    if(addShares && addShares > 0) r.shares = Math.round((oldShares + addShares) * 10000) / 10000;
+    return { ok:true, created:false, row:r, addShares: addShares||0 };
+  }
 
   if(!addShares){
     const px = num(r.price);
     if(px > 0){
-      const amtHold = amountInHoldingCurrency(amount, currency, r.currency);
-      addShares = amtHold / px;
+      addShares = amtInHold / px;
     } else {
       setStatus("請填寫股數（或先更新該股現價）","err");
       return { ok:false };
     }
   }
 
-  const amtInHold = amountInHoldingCurrency(amount, currency, r.currency);
+  // 股票／港股：加總股數，重算每股平均成本
+  // 新平均成本 = (舊股數×舊成本 + 本次投入金額換算後) / 新股數
   const newShares = oldShares + addShares;
   const newAvg = newShares > 0 ? (oldShares * oldCost + amtInHold) / newShares : oldCost;
   r.shares = Math.round(newShares * 10000) / 10000;
@@ -492,7 +528,8 @@ document.getElementById("btn-dca-add").onclick=()=>{
   const result = mergeDcaIntoHolding(name, currency, amount, shares);
   if(!result.ok) return;
 
-  dcaList.push({ month, name, currency, amount, shares });
+  const curNorm = String(currency||"HKD").trim().toUpperCase();
+  dcaList.push({ month, name, currency: curNorm, amount, shares });
   document.getElementById("dca-name").value = "";
   document.getElementById("dca-amount").value = "";
   document.getElementById("dca-shares").value = "";
