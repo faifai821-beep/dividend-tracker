@@ -134,7 +134,7 @@
         <canvas id="pie-chart"></canvas>
       </div>
       <p class="muted" id="pie-empty" style="display:none;margin-top:12px">尚無資產資料</p>
-      <p class="muted" style="font-size:.75rem;margin-top:8px;text-align:center">比例與上方表格一致（依市值 HKD）</p>
+      <p class="muted" style="font-size:.75rem;margin-top:8px;text-align:center"><span style="color:#ffffff">比例與上方表格一致（依市值 HKD）</span></p>
     </div>
   </div>
 
@@ -351,6 +351,7 @@ function renderAllocation(){
   if(pieChart) pieChart.destroy();
 
   const dataSum = data.reduce((a,b)=>a+b, 0);
+  Chart.defaults.color = "#ffffff";
   pieChart = new Chart(canvas.getContext("2d"), {
     type: "doughnut",
     data: {
@@ -372,10 +373,11 @@ function renderAllocation(){
         legend: {
           position: "bottom",
           labels: {
-            color: "#e7ecf3",
-            padding: 10,
+            color: "#ffffff",
+            padding: 12,
             boxWidth: 12,
-            font: { size: 12 },
+            boxHeight: 12,
+            font: { size: 13, weight: "500" },
             generateLabels(chart) {
               const ds = chart.data.datasets[0];
               return chart.data.labels.map((label, i) => ({
@@ -384,12 +386,18 @@ function renderAllocation(){
                 strokeStyle: "#0f1419",
                 lineWidth: 1,
                 hidden: false,
-                index: i
+                index: i,
+                fontColor: "#ffffff"
               }));
             }
           }
         },
         tooltip: {
+          titleColor: "#ffffff",
+          bodyColor: "#ffffff",
+          backgroundColor: "rgba(15,20,25,0.95)",
+          borderColor: "#2d3a4f",
+          borderWidth: 1,
           callbacks: {
             label(ctx) {
               const v = Number(ctx.raw) || 0;
