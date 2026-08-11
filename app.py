@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-股息投資組合追蹤 — FMP (Financial Modeling Prep) 版
-Render 環境變數：FMP_API_KEY
+股息投資組合追蹤 — FMP Stable API 版
+環境變數：FMP_API_KEY
+文件：https://financialmodelingprep.com/stable/
 """
 
 from flask import Flask, render_template, request, jsonify
@@ -16,23 +17,22 @@ warnings.filterwarnings("ignore")
 app = Flask(__name__)
 
 FMP_KEY = os.environ.get("FMP_API_KEY", "").strip()
-FMP_BASE = "https://financialmodelingprep.com/api/v3"
+FMP_BASE = "https://financialmodelingprep.com/stable"
 
 
-def fmp_get(path: str, params: dict = None):
+def fmp_get(endpoint: str, params: dict = None):
     if not FMP_KEY:
         return {"error": "尚未設定 FMP_API_KEY"}
     params = dict(params or {})
     params["apikey"] = FMP_KEY
     try:
-        r = requests.get(f"{FMP_BASE}/{path}", params=params, timeout=25)
+        r = requests.get(f"{FMP_BASE}/{endpoint}", params=params, timeout=25)
         data = r.json()
-        if r.status_code != 200:
-            if isinstance(data, dict):
-                return {"error": data.get("Error Message") or data.get("error") or f"HTTP {r.status_code}"}
-            return {"error": f"HTTP {r.status_code}"}
         if isinstance(data, dict) and data.get("Error Message"):
             return {"error": data["Error Message"]}
+        if r.status_code != 200:
+            msg = data.get("Error Message") if isinstance(data, dict) else f"HTTP {r.status_code}"
+            return {"error": msg or f"HTTP {r.status_code}"}
         return data
     except Exception as e:
         return {"error": str(e)}
@@ -43,7 +43,7 @@ def _f(v):
         return None
     try:
         x = float(v)
-        if x != x:  # NaN
+        if x != x:
             return None
         return x
     except (TypeError, ValueError):
@@ -54,6 +54,14 @@ def _date(v):
     if not v:
         return None
     return str(v)[:10]
+
+
+def _first_row(data):
+    if isinstance(data, list) and data:
+        return data[0] if isinstance(data[0], dict) else {}
+    if isinstance(data, dict) and not data.get("error"):
+        return data
+    return {}
 
 
 def fetch_one(ticker: str) -> dict:
@@ -74,126 +82,89 @@ def fetch_one(ticker: str) -> dict:
         out["error"] = "伺服器尚未設定 FMP API Key"
         return out
 
-    # 1) Quote — 現價、名稱、年息、息率（quote 常已含）
-    qlist = fmp_get(f"quote/{ticker}")
-    if isinstance(qlist, dict) and qlist.get("error"):
-        out["error"] = qlist["error"]
+    # 1) Quote
+    qdata = fmp_get("quote", {"symbol": ticker})
+    if isinstance(qdata, dict) and qdata.get("error"):
+        out["error"] = qdata["error"]
         return out
-    if not isinstance(qlist, list) or len(qlist) == 0:
-        out["error"] = "查無此代號或 API 無回傳"
+    q = _first_row(qdata)
+    if not q:
+        out["error"] = "查無此代號報價"
         return out
 
-    q = qlist[0] if isinstance(qlist[0], dict) else {}
     if q.get("name"):
         out["name"] = q["name"]
     price = _f(q.get("price"))
     if price is not None and price > 0:
         out["price"] = round(price, 4)
 
-    # quote 內常見欄位
-    for key in ("lastDiv", "lastDividend", "dividend"):
-        d = _f(q.get(key))
-        if d is not None and d > 0:
-            # lastDiv 有時是最近一季，有時是年；下面再用 metrics 校正
-            out["last_div_amount"] = round(d, 4)
-            break
-
-    y = _f(q.get("dividendYield") or q.get("yield"))
-    if y is not None and y > 0:
-        # FMP 有時是 0.005（小數）、有時是 0.5（已是百分比）
-        out["yahoo_yield"] = round(y * 100, 2) if y < 0.2 else round(y, 2)
-
     time.sleep(0.2)
 
-    # 2) Profile — 幣別、公司名
-    plist = fmp_get(f"profile/{ticker}")
-    if isinstance(plist, list) and plist:
-        p = plist[0]
+    # 2) Profile — 幣別、公司名、lastDiv
+    pdata = fmp_get("profile", {"symbol": ticker})
+    if not (isinstance(pdata, dict) and pdata.get("error")):
+        p = _first_row(pdata)
         if p.get("companyName") and (not out["name"] or out["name"] == ticker):
             out["name"] = p["companyName"]
         if p.get("currency"):
             out["currency"] = p["currency"]
-        # profile 有時有 lastDiv / price
         if out["price"] is None:
             pr = _f(p.get("price"))
             if pr:
                 out["price"] = round(pr, 4)
         ld = _f(p.get("lastDiv"))
-        if ld and out["last_div_amount"] is None:
+        if ld and ld > 0:
             out["last_div_amount"] = round(ld, 4)
+            # lastDiv 常為最近一季 → 年息約 ×4（後面用 dividends 校正）
+            if out["annual_div"] is None:
+                out["annual_div"] = round(ld * 4, 4)
 
     time.sleep(0.2)
 
-    # 3) Key metrics TTM — 股息殖利率、每股股息
-    metrics = fmp_get(f"key-metrics-ttm/{ticker}")
-    if isinstance(metrics, list) and metrics:
-        m = metrics[0]
-        # 每股股息（年）
-        for key in (
-            "dividendPerShareTTM",
-            "dividendPerShare",
-            "netIncomePerShareTTM",  # 不要用這個
-        ):
-            if key.startswith("net"):
-                continue
-            val = _f(m.get(key))
-            if val is not None and val > 0:
-                out["annual_div"] = round(val, 4)
-                break
-        dy = _f(m.get("dividendYieldTTM") or m.get("dividendYield"))
-        if dy is not None and dy > 0:
-            out["yahoo_yield"] = round(dy * 100, 2) if dy < 0.2 else round(dy, 2)
-
-    time.sleep(0.2)
-
-    # 4) Ratios TTM — 再補一次 yield
-    if out["yahoo_yield"] is None:
-        ratios = fmp_get(f"ratios-ttm/{ticker}")
-        if isinstance(ratios, list) and ratios:
-            r0 = ratios[0]
-            dy = _f(r0.get("dividendYieldTTM") or r0.get("dividendYielTTM") or r0.get("dividendYield"))
-            if dy is not None and dy > 0:
-                out["yahoo_yield"] = round(dy * 100, 2) if dy < 0.2 else round(dy, 2)
-        time.sleep(0.15)
-
-    # 5) 歷史派息 — 最近一次 + 估算年息
-    div_data = fmp_get(f"historical-price-full/stock_dividend/{ticker}")
+    # 3) Dividends — 派息歷史／殖利率／頻率
+    ddata = fmp_get("dividends", {"symbol": ticker})
     hist = []
-    if isinstance(div_data, dict) and not div_data.get("error"):
-        hist = div_data.get("historical") or []
-    elif isinstance(div_data, list):
-        hist = div_data
+    if isinstance(ddata, list):
+        hist = [x for x in ddata if isinstance(x, dict)]
+    elif isinstance(ddata, dict) and not ddata.get("error"):
+        hist = ddata.get("historical") or ddata.get("data") or []
 
     if hist:
-        # 已按日期新到舊
         latest = hist[0]
         amt = _f(latest.get("adjDividend") or latest.get("dividend"))
-        if amt is not None:
+        if amt is not None and amt > 0:
             out["last_div_amount"] = round(amt, 4)
-        out["last_div_date"] = _date(latest.get("date") or latest.get("paymentDate"))
-        out["next_ex_div"] = _date(latest.get("date"))  # 最近除淨日參考
+        out["last_div_date"] = _date(
+            latest.get("paymentDate") or latest.get("date") or latest.get("recordDate")
+        )
+        out["next_ex_div"] = _date(latest.get("date") or latest.get("recordDate"))
 
-        # 用近 12 個月派息加總當年息
-        if out["annual_div"] is None and amt is not None:
-            total = 0.0
-            count = 0
-            for h in hist[:8]:
-                a = _f(h.get("adjDividend") or h.get("dividend"))
-                if a is not None:
-                    total += a
-                    count += 1
-            # 若一年約 4 次，取最近 4 筆；否則用最近一筆 × 頻率
-            if count >= 4:
-                out["annual_div"] = round(sum(
-                    _f(h.get("adjDividend") or h.get("dividend")) or 0 for h in hist[:4]
-                ), 4)
-            elif count >= 1:
-                # 預設季息
-                out["annual_div"] = round(amt * 4, 4)
+        y = _f(latest.get("yield"))
+        if y is not None and y > 0:
+            # 文件範例 yield 約 0.35 表示 0.35%
+            out["yahoo_yield"] = round(y, 2) if y >= 0.05 else round(y * 100, 2)
 
-            # yield from price
-            if out["yahoo_yield"] is None and out["price"] and out["annual_div"]:
-                out["yahoo_yield"] = round(out["annual_div"] / out["price"] * 100, 2)
+        freq = (latest.get("frequency") or "").lower()
+        mult = 4
+        if "month" in freq:
+            mult = 12
+        elif "semi" in freq or "half" in freq:
+            mult = 2
+        elif "annual" in freq or "year" in freq:
+            mult = 1
+        elif "quarter" in freq:
+            mult = 4
+
+        # 近一年派息加總（最多取 4～12 筆）
+        recent_amts = []
+        for h in hist[:12]:
+            a = _f(h.get("adjDividend") or h.get("dividend"))
+            if a is not None and a > 0:
+                recent_amts.append(a)
+        if len(recent_amts) >= 4:
+            out["annual_div"] = round(sum(recent_amts[:4]), 4)
+        elif amt is not None and amt > 0:
+            out["annual_div"] = round(amt * mult, 4)
 
     # 互相補齊
     if out["annual_div"] is None and out["price"] and out["yahoo_yield"]:
@@ -201,14 +172,8 @@ def fetch_one(ticker: str) -> dict:
     if out["yahoo_yield"] is None and out["price"] and out["annual_div"]:
         out["yahoo_yield"] = round(out["annual_div"] / out["price"] * 100, 2)
 
-    # lastDiv 若像是季息且尚無年息
-    if out["annual_div"] is None and out["last_div_amount"]:
-        out["annual_div"] = round(out["last_div_amount"] * 4, 4)
-        if out["price"] and out["yahoo_yield"] is None:
-            out["yahoo_yield"] = round(out["annual_div"] / out["price"] * 100, 2)
-
     if out["price"] is None and out["annual_div"] is None:
-        out["error"] = out.get("error") or "查無報價／股息資料"
+        out["error"] = "查無報價／股息資料"
 
     return out
 
@@ -240,7 +205,6 @@ def api_quotes():
             seen.add(t)
             clean.append(t)
 
-    # 免費約 250 次／天；每檔約 3～5 次請求，建議一次 ≤10 檔
     if len(clean) > 10:
         return jsonify({"error": "免費額度有限，一次最多 10 檔。請分批更新。"}), 400
 
@@ -252,7 +216,7 @@ def api_quotes():
     return jsonify({
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "results": results,
-        "note": "FMP 免費約 250 次/天；每檔會用數次請求",
+        "note": "FMP Stable API；免費額度有限，請勿頻繁大量更新",
         "provider": "FMP",
     })
 
@@ -264,13 +228,14 @@ def health():
         "time": datetime.now().isoformat(),
         "api_key_set": bool(FMP_KEY),
         "provider": "FMP",
+        "api_base": "stable",
     })
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     print("=" * 50)
-    print("  股息投資組合 — FMP 版")
+    print("  股息投資組合 — FMP Stable")
     print(f"  API Key 已設定: {bool(FMP_KEY)}")
     print(f"  http://127.0.0.1:{port}")
     print("=" * 50)
